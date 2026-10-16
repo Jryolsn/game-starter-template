@@ -1,5 +1,5 @@
 // Rumshantering i minnet. Servern är auktoritativ: den kör spellogiken och skickar ut tillståndet.
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import * as game from "../shared/game.ts";
 import { generateRoomCode, normalizeRoomCode } from "../shared/roomCode.ts";
 import { LIMITS, WindowCounter } from "./limits.ts";
@@ -37,11 +37,13 @@ export class RoomManager {
   private rooms = new Map<string, Room>();
   private where = new Map<Conn, { room: Room; player: Player }>();
   private creates: WindowCounter;
+  private failedJoins: WindowCounter;
   private maxRooms: number;
 
-  constructor(opts: { maxRooms?: number; roomsPerMinute?: number } = {}) {
+  constructor(opts: { maxRooms?: number; roomsPerMinute?: number; failedJoinsPerMinute?: number } = {}) {
     this.maxRooms = opts.maxRooms ?? LIMITS.maxRooms;
     this.creates = new WindowCounter(opts.roomsPerMinute ?? LIMITS.roomsPerMinute, 60_000);
+    this.failedJoins = new WindowCounter(opts.failedJoinsPerMinute ?? LIMITS.failedJoinsPerMinute, 60_000);
   }
 
   get roomCount(): number {
@@ -107,13 +109,22 @@ export class RoomManager {
   }
 
   private join(conn: Conn, rawCode: string, name: string, resume?: { playerId: string; secret: string }): void {
+    const ip = conn.ip ?? "?";
+    // Koderna är korta, så begränsa felgissningar för att ingen ska kunna leta upp andras rum.
+    if (this.failedJoins.isBlocked(ip)) {
+      return this.error(conn, "rate_limited", "För många felaktiga koder. Vänta en minut.");
+    }
     const code = normalizeRoomCode(String(rawCode ?? ""));
     const room = code ? this.rooms.get(code) : undefined;
-    if (!room) return this.error(conn, "not_found", "Hittade inget rum med den koden.");
+    if (!room) {
+      this.failedJoins.allow(ip);
+      this.failedJoins.prune();
+      return this.error(conn, "not_found", "Hittade inget rum med den koden.");
+    }
     this.leave(conn);
 
     const old = resume && room.players.get(resume.playerId);
-    if (old && old.secret === resume.secret) {
+    if (old && safeEqual(old.secret, resume.secret)) {
       clearTimeout(old.dropTimer);
       if (old.conn) this.where.delete(old.conn);
       old.conn = conn;
@@ -210,7 +221,17 @@ export class RoomManager {
   }
 }
 
+function safeEqual(a: string, b: string): boolean {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
 function cleanName(name: unknown, n: number): string {
-  const s = String(name ?? "").replace(/\s+/g, " ").trim().slice(0, 16);
+  const s = String(name ?? "")
+    .replace(/[\p{Cc}\p{Cf}]/gu, "") // kontrolltecken och osynliga tecken (t.ex. riktningsbyten som vänder text)
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 16);
   return s || `Spelare ${n}`;
 }

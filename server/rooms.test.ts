@@ -105,3 +105,21 @@ test("shutdown meddelar spelarna och tömmer rummen", () => {
   assert.equal(a.last("error").code, "server_restart");
   assert.equal(rooms.roomCount, 0);
 });
+
+test("felgissade koder begränsas per IP", () => {
+  rooms = new RoomManager({ failedJoinsPerMinute: 3 });
+  const a = client();
+  const conn = { ...a.conn, ip: "5.6.7.8" };
+  for (let i = 0; i < 3; i++) rooms.handle(conn, { t: "join", code: "ZZZZ", name: "X" });
+  assert.equal(a.last("error").code, "not_found");
+  rooms.handle(conn, { t: "join", code: "ZZZZ", name: "X" });
+  assert.equal(a.last("error").code, "rate_limited");
+});
+
+test("namn rensas från kontrolltecken och riktningsbyten", () => {
+  rooms = new RoomManager();
+  const a = client();
+  cleanup.push(a.conn);
+  rooms.handle(a.conn, { t: "create", name: "‮abc\u0000 def" });
+  assert.equal(a.last("lobby").players[0].name, "abc def");
+});

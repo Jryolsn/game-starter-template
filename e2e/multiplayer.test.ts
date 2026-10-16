@@ -97,3 +97,15 @@ test("gammal klientversion blir ombedd att ladda om", async () => {
   assert.deepEqual([msg.t, msg.code], ["error", "outdated"]);
   ws.close();
 });
+
+test("felaktig URL-kodning kraschar inte servern", async () => {
+  const res = await fetch(`${URL_}/%E0%A4%A`);
+  assert.equal(res.status, 400);
+  assert.ok((await fetch(`${URL_}/health`)).ok);
+});
+
+test("sidan skickas med säkerhetsheaders", async () => {
+  const res = await fetch(URL_);
+  assert.match(res.headers.get("content-security-policy") ?? "", /frame-ancestors 'none'/);
+  assert.equal(res.headers.get("x-content-type-options"), "nosniff");
+});

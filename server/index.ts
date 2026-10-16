@@ -25,8 +25,33 @@ const rooms = new RoomManager();
 const connectionsPerIp = new Map<string, number>();
 let shuttingDown = false;
 
+// Säkerhetsheaders för spelsidan. Ligger klienten på en annan domän än servern: lägg till den i connect-src.
+const SECURITY_HEADERS = {
+  "content-security-policy":
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+    "media-src 'self' data: blob:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+  "x-frame-options": "DENY",
+};
+
+/** Tillåtna sidor som får öppna WebSocket mot servern (kommaseparerat). Tomt = alla. */
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+/** Lita på X-Forwarded-For (sätt TRUST_PROXY=0 om servern nås direkt utan proxy framför). */
+const TRUST_PROXY = process.env.TRUST_PROXY !== "0";
+
 const http = createServer((req, res) => {
-  const path = decodeURIComponent(new URL(req.url ?? "/", "http://x").pathname);
+  let path: string;
+  try {
+    path = decodeURIComponent(new URL(req.url ?? "/", "http://x").pathname);
+  } catch {
+    // Felaktig URL-kodning (t.ex. "/%E0%A4%A") får inte krascha servern.
+    res.writeHead(400);
+    return res.end();
+  }
   if (path === "/health") {
     res.writeHead(shuttingDown ? 503 : 200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ ok: !shuttingDown, rooms: rooms.roomCount, version: PROTOCOL_VERSION }));
@@ -39,13 +64,22 @@ const http = createServer((req, res) => {
   let file = join(DIST, normalize(path).replace(/^(\.\.[/\\])+/, ""));
   if (!file.startsWith(DIST) || !existsSync(file) || statSync(file).isDirectory()) file = join(DIST, "index.html");
   res.writeHead(200, {
+    ...SECURITY_HEADERS,
     "content-type": MIME[extname(file)] ?? "application/octet-stream",
     "cache-control": file.includes("/assets/") ? "public, max-age=31536000, immutable" : "no-cache",
   });
-  createReadStream(file).pipe(res);
+  createReadStream(file)
+    .on("error", () => res.destroy())
+    .pipe(res);
 });
 
-const wss = new WebSocketServer({ server: http, path: WS_PATH, maxPayload: 4096 });
+const wss = new WebSocketServer({
+  server: http,
+  path: WS_PATH,
+  maxPayload: 4096,
+  // Stoppa andra webbplatser från att ansluta till din server, om ALLOWED_ORIGINS är satt.
+  verifyClient: ({ origin }: { origin: string }) => ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin),
+});
 const alive = new WeakSet<WebSocket>();
 
 wss.on("connection", (ws, req) => {
@@ -91,6 +125,7 @@ wss.on("connection", (ws, req) => {
 
 /** Bakom en proxy (Fly, Render, Railway) är klientens adress den sista i X-Forwarded-For. */
 function clientIp(req: IncomingMessage): string {
+  if (!TRUST_PROXY) return req.socket.remoteAddress || "?";
   const fwd = req.headers["x-forwarded-for"];
   const last = (Array.isArray(fwd) ? fwd.at(-1) : fwd)?.split(",").at(-1)?.trim();
   return last || req.socket.remoteAddress || "?";

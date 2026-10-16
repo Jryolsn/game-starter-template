@@ -68,6 +68,10 @@ Servern och solo-läget använder samma logik, så de följer med automatiskt.
 - **Validering:** varje meddelande från klienten kontrolleras i `server/validate.ts` innan det når rummen.
 - **Gränser** (`server/limits.ts`, kan ändras med miljövariabler): `LIMIT_MSG_PER_SECOND` (30), `LIMIT_MSG_BURST` (60), `LIMIT_ROOMS_PER_MINUTE` per IP (10), `LIMIT_MAX_ROOMS` (1000), `LIMIT_CONNECTIONS_PER_IP` (20). En klient som spammar kopplas bort.
 - **Versionskoll:** klienten ansluter med `?v=PROTOCOL_VERSION`. Höj `PROTOCOL_VERSION` i `shared/protocol.ts` när meddelandeformatet ändras, så laddar gamla flikar om sig själva efter driftsättningen.
+- **HTTP:** säkerhetsheaders (CSP, `nosniff`, ingen inbäddning i andra sidor) och felaktiga URL:er ger 400 i stället för att krascha servern.
+- **Rumskoder:** felgissade koder begränsas per IP (`LIMIT_FAILED_JOINS_PER_MINUTE`, 20), så ingen kan leta igenom koder för att hitta andras rum.
+- **Origin:** sätt `ALLOWED_ORIGINS=https://dittspel.se` för att bara tillåta WebSocket-anslutningar från din egen sida.
+- **Proxy:** IP-adressen läses från `X-Forwarded-For` (rätt bakom Fly, Render, Railway). Nås servern direkt utan proxy: sätt `TRUST_PROXY=0`, annars kan gränserna per IP kringgås.
 - **Snygg avstängning:** vid `SIGTERM` får alla spelare beskedet att servern startas om innan anslutningarna stängs, och `/health` svarar 503.
 
 ## Mobilkänsla
