@@ -38,16 +38,19 @@ docker build -t mitt-spel . && docker run -p 8080:8080 mitt-spel
 
 ## Hur det hänger ihop
 
+**`game/` är spelets, allt annat är mallens.** Ett nytt spel ändrar i första hand bara filerna i `game/`. Se [docs/mallen-och-spelen.md](docs/mallen-och-spelen.md).
+
 | Mapp | Innehåll |
 | --- | --- |
-| `shared/game.ts` | Spellogiken. Ren TypeScript utan DOM eller nätverk. **Byt ut den här för ditt eget spel.** |
+| `game/logic.ts` | Spellogiken. Ren TypeScript utan DOM eller nätverk. **Byt ut den här för ditt eget spel.** |
+| `game/view.ts` | Canvas-rendering och styrning: virtuell joystick där tummen landar, WASD/piltangenter på dator. |
+| `game/ui.ts` | Spelets texter i HUD:en, resultatskärmen och feedback (ljud, vibration). |
 | `shared/protocol.ts` | Alla meddelanden mellan klient och server. |
 | `shared/roomCode.ts` | Rumskoder (4 tecken, inga förväxlingsbara tecken som 0/O, 1/I/L) och länkar `/r/KOD` eller `?room=KOD`. |
 | `server/rooms.ts` | Rum i minnet. Servern är auktoritativ: den kör `tick()` 20 gånger/s och skickar ut tillståndet. |
 | `server/index.ts` | HTTP + WebSocket (`/ws`). Serverar `dist/` i produktion, `/health` för övervakning. |
 | `client/src/net.ts` | `OnlineConnection` (WebSocket) och `SoloConnection` (samma meddelanden, men spelet körs lokalt i webbläsaren). |
-| `client/src/gameView.ts` | Canvas-rendering och styrning: virtuell joystick där tummen landar, WASD/piltangenter på dator. |
-| `client/src/main.ts` | Skärmarna: start, gå med via länk, lobby, spel, resultat. |
+| `client/src/main.ts` | Mallens skärmar: start, gå med via länk, lobby, spel och resultat. Anropar `game/` för det spelspecifika. |
 
 Flödet:
 
@@ -73,7 +76,7 @@ Lösenordet ligger i klartext i serverns minne och försvinner med rummet. Fel l
 
 ## Göra ett eget spel
 
-1. Skriv om `shared/game.ts`: behåll `createGame`, `addPlayer`, `removePlayer`, `applyInput`, `tick` och fälten `players`/`over`/`timeLeft` (eller anpassa HUD och resultat i `main.ts`).
+1. Skriv om `game/logic.ts`: behåll `createGame`, `addPlayer`, `removePlayer`, `applyInput`, `tick` och fälten `players`/`over`/`timeLeft` (HUD och resultat anpassas i `game/ui.ts`).
 2. Ändra `PlayerInput` till det ditt spel behöver (knappar, mål, tryck).
 3. Rita om i `GameView.draw`.
 
@@ -81,7 +84,7 @@ Servern och solo-läget använder samma logik, så de följer med automatiskt.
 
 ## Skydd och drift
 
-- **Validering:** varje meddelande från klienten kontrolleras mot `ClientMsgSchema` ([Valibot](https://valibot.dev), `shared/protocol.ts`) innan det når rummen. Spelets egen input har ett schema i `shared/game.ts`.
+- **Validering:** varje meddelande från klienten kontrolleras mot `ClientMsgSchema` ([Valibot](https://valibot.dev), `shared/protocol.ts`) innan det når rummen. Spelets egen input har ett schema i `game/logic.ts`.
 - **Gränser** (`server/limits.ts`, kan ändras med miljövariabler): `LIMIT_MSG_PER_SECOND` (30), `LIMIT_MSG_BURST` (60), `LIMIT_ROOMS_PER_MINUTE` per IP (10), `LIMIT_MAX_ROOMS` (1000), `LIMIT_CONNECTIONS_PER_IP` (20). En klient som spammar kopplas bort.
 - **Versionskoll:** klienten ansluter med `?v=PROTOCOL_VERSION`. Höj `PROTOCOL_VERSION` i `shared/protocol.ts` när meddelandeformatet ändras, så laddar gamla flikar om sig själva efter driftsättningen.
 - **HTTP:** säkerhetsheaders (CSP, `nosniff`, ingen inbäddning i andra sidor) och felaktiga URL:er ger 400 i stället för att krascha servern.

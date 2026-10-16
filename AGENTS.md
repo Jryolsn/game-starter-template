@@ -2,7 +2,8 @@
 
 Startpunkt för webbspel: spela solo eller med andra i samma rum via 4-teckenskod eller länk (`/r/KOD`).
 
-- `shared/game.ts`: spellogiken, ren TS utan DOM/nätverk. Körs på servern OCH i webbläsaren (solo). Ett nytt spel byter i första hand ut den här filen; se `docs/nytt-spel.md`.
+- **`game/` är spelets, allt annat är mallens.** Spelspecifik kod läggs bara i `game/`. Behövs en ändring utanför `game/`: gör den generell, i en egen commit, och föreslå den för mallen (`docs/mallen-och-spelen.md`). Blanda aldrig `game/` och mallens filer i samma commit.
+- `game/logic.ts`: spellogiken, ren TS utan DOM/nätverk. Körs på servern OCH i webbläsaren (solo). `game/view.ts` ritar och läser styrning, `game/ui.ts` ger HUD, resultat och feedback. Se `docs/nytt-spel.md`.
 - `shared/protocol.ts`: alla meddelanden klient ↔ server. Ändra båda sidor tillsammans.
 - `server/rooms.ts`: auktoritativ server, rum i minnet, `tick()` 20 Hz, återanslutning med hemlig nyckel. Rum är privata eller publika, kan ha lösenord (inbjudningsnyckeln i länken `#k=` går förbi det) och kan låsas. Bara värden ändrar inställningar och tar bort spelare; kontrollera `hostId` i servern för varje sådan åtgärd.
 - `client/src/net.ts`: `OnlineConnection` (WebSocket) och `SoloConnection` (samma protokoll lokalt). UI-koden ska inte veta vilken som används.

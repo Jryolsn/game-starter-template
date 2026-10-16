@@ -1,0 +1,12 @@
+#!/bin/sh
+# Varnar (stoppar inte) när en commit blandar spelets filer (game/) med mallens.
+# Gäller bara spel som har mallen som remote "template", se docs/mallen-och-spelen.md.
+git remote get-url template >/dev/null 2>&1 || exit 0
+files=$(git diff --cached --name-only)
+game=$(printf '%s\n' "$files" | grep -c '^game/')
+other=$(printf '%s\n' "$files" | grep -v '^game/' | grep -c .)
+if [ "$game" -gt 0 ] && [ "$other" -gt 0 ]; then
+  echo "Obs: commiten ändrar både game/ och mallens filer."
+  echo "Dela upp den så att mallens ändring kan skickas till mallen för sig."
+fi
+exit 0

@@ -9,7 +9,9 @@ pnpm install
 pnpm dev
 ```
 
-## 2. Skriv spellogiken i `shared/game.ts`
+Allt spelspecifikt bor i `game/`: `logic.ts` (regler), `view.ts` (rita och styra) och `ui.ts` (HUD, resultat, feedback). Resten är mallens. Behöver spelet ändra något utanför `game/` är det oftast en förbättring som hör hemma i mallen, se [mallen-och-spelen.md](mallen-och-spelen.md).
+
+## 2. Skriv spellogiken i `game/logic.ts`
 
 All spelregler bor i den här filen. Den körs både på servern (multiplayer) och i webbläsaren (solo), så den får inte använda DOM, `window`, nätverk eller `Math.random` (använd `rand(state)` så att slumpen följer med i tillståndet).
 
@@ -28,7 +30,7 @@ Funktionerna som resten av startern anropar:
 
 ## 3. Ändra styrningen
 
-`PlayerInputSchema` i `game.ts` är ett [Valibot](https://valibot.dev)-schema för det klienten skickar; typen `PlayerInput` härleds från det och servern avvisar allt som inte matchar. Ändra schemat, inte bara typen. Exemplet använder en riktning `{ x, y }` från joysticken. För knappar, tryck på skärmen eller sikte: ändra schemat och `GameView.updateInput()` i `client/src/gameView.ts`.
+`PlayerInputSchema` i `game/logic.ts` är ett [Valibot](https://valibot.dev)-schema för det klienten skickar; typen `PlayerInput` härleds från det och servern avvisar allt som inte matchar. Ändra schemat, inte bara typen. Exemplet använder en riktning `{ x, y }` från joysticken. För knappar, tryck på skärmen eller sikte: ändra schemat och `GameView.updateInput()` i `game/view.ts`.
 
 ## 4. Rita spelet
 
@@ -52,7 +54,7 @@ Kör bara **en** instans. Rummen ligger i processens minne, så två instanser s
 
 ## Ljud, vibration och skärm
 
-Använd hjälpfunktionerna i `client/src/device.ts`. Lägg ljudfiler i `client/public/sounds/` och spela dem med `playSound("/sounds/poang.mp3")`. Feedbacken i exemplet sitter i `onState()` i `client/src/main.ts`.
+Använd hjälpfunktionerna i `client/src/device.ts`. Lägg ljudfiler i `client/public/sounds/` och spela dem med `playSound("/sounds/poang.mp3")`. Feedbacken i exemplet sitter i `feedback()` i `game/ui.ts`.
 
 ## Ändrar du protokollet?
 
@@ -71,7 +73,7 @@ Grafikmotor, UI-ramverk, fysik, konton, flera servrar: se [När spelet växer](n
 | Kodlängd / tecken | `shared/roomCode.ts` |
 | Hur länge en tappad spelare behåller platsen | `RECONNECT_GRACE_MS` i `server/rooms.ts` |
 | Gränser mot missbruk | miljövariabler `LIMIT_*`, se `server/limits.ts` |
-| Färger och utseende | `client/src/style.css`, `PLAYER_COLORS` i `game.ts` (behåll minst lika många färger som `MAX_PLAYERS`) |
+| Färger och utseende | `client/src/style.css`, `PLAYER_COLORS` i `game/logic.ts` (behåll minst lika många färger som `MAX_PLAYERS`) |
 | Fler spelarinställningar (t.ex. avatar, lag) | Lägg till fältet i `profile`-schemat i `shared/protocol.ts`, hantera det i `RoomManager.profile()` och visa det i `showSettings()` i `main.ts` |
 | Rumsfunktioner (publikt, lösenord, lås, ta bort spelare) | `settings`- och `kick`-meddelandena i `shared/protocol.ts`, `RoomManager.settings()`/`kick()` i `server/rooms.ts`, `showRoomSettings()` i `main.ts`. Behövs de inte i ett spel: ta bort knappen "Rumsinställningar" i `showLobby()`. |
 | Spelets namn | `<title>` i `client/index.html`, `client/public/manifest.webmanifest` |

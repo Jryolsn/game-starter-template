@@ -2,7 +2,7 @@
 //  - OnlineConnection: riktig WebSocket mot Node-servern (multiplayer).
 //  - SoloConnection: en liten server som kör i webbläsaren (spela själv, funkar offline).
 // Resten av klienten vet inte vilken som används.
-import * as game from "../../shared/game.ts";
+import * as game from "../../game/logic.ts";
 import {
   type ClientMsg,
   PROTOCOL_VERSION,

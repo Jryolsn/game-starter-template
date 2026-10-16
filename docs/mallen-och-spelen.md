@@ -52,13 +52,19 @@ Behövde förbättringen anpassas för att passa mallen (till exempel för att d
 
 ## Vad är mallens och vad är spelets?
 
-| Typiskt spelets egna (ändras fritt) | Typiskt mallens (förbättra här, skicka uppåt) |
+**Allt i `game/` är spelets. Allt annat är mallens.**
+
+| `game/` (spelets, ändras fritt) | Utanför `game/` (mallens) |
 | --- | --- |
-| `shared/game.ts` | `server/` (rum, gränser, validering) |
-| `client/src/gameView.ts` | `client/src/net.ts`, `device.ts`, `profile.ts` |
-| Spelets namn, ikon, färger | `shared/protocol.ts` (rum, lobby, inställningar) |
-| Spelets egna skärmar | `shared/roomCode.ts`, `scripts/`, CI, Dockerfile |
+| `logic.ts`: regler, input-schema, färger | `server/`: rum, gränser, validering |
+| `view.ts`: rita och styra | `client/src/`: skärmar, nätverk, profil, ljud |
+| `ui.ts`: HUD, resultat, feedback | `shared/`: protokoll och rumskoder |
+| Nya filer spelet behöver | `scripts/`, `docs/`, CI, Dockerfile |
 
-`client/src/main.ts` och `style.css` delas av båda. Lägg gärna spelets egna skärmar i nya filer i stället för att bygga ut `main.ts`, så blir sammanslagningarna enklare.
+Undantag: spelets namn och ikon ligger i `client/index.html` och `client/public/`. De ändras en gång och ger sällan konflikter.
 
-Tumregel: om du skulle vilja ha ändringen i nästa spel också, gör den som en egen commit och skicka den till mallen.
+Så används gränsen:
+
+- **Behöver spelet något som mallen saknar** (en ny skärm, en ny inställning, en krok i `main.ts`)? Bygg det generellt utanför `game/` i en egen commit och skicka den till mallen. Spelet använder sedan kroken från `game/`.
+- **Blanda aldrig** `game/` och mallens filer i samma commit. Commit-hooken varnar om det händer i ett spel som har mallen som remote.
+- Kommer en ändring från mallen med konflikt utanför `game/`, har spelet ändrat mallens filer. Flytta den ändringen till `game/` eller till mallen.

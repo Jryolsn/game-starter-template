@@ -1,7 +1,7 @@
 // Meddelanden mellan klient och server. Allt är JSON över en WebSocket.
 // Klientens meddelanden beskrivs som Valibot-scheman: de ger både TypeScript-typerna och valideringen på servern.
 import * as v from "valibot";
-import { type GameState, PLAYER_COLORS, PlayerInputSchema } from "./game.ts";
+import { type GameState, PLAYER_COLORS, PlayerInputSchema } from "../game/logic.ts";
 
 export interface LobbyPlayer {
   id: string;

@@ -1,6 +1,6 @@
 // Exempelspelet "Prickjakt": styr din boll och plocka flest prickar innan tiden tar slut.
 // Ren logik utan DOM eller nätverk, så samma kod kör på servern (multiplayer) och i webbläsaren (solo).
-// Byt ut den här filen för att göra ett eget spel; behåll funktionerna create/addPlayer/removePlayer/applyInput/tick.
+// Byt ut den här filen för att göra ett eget spel; behåll exporterna som mallen använder (se docs/nytt-spel.md).
 import * as v from "valibot";
 
 export const WORLD = { width: 90, height: 160 }; // stående format, mobile first

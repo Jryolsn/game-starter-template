@@ -14,6 +14,7 @@ ENV NODE_ENV=production PORT=8080
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --prod && pnpm store prune
 COPY --from=build /app/dist ./dist
+COPY game ./game
 COPY shared ./shared
 COPY server ./server
 EXPOSE 8080

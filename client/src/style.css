@@ -197,6 +197,10 @@ input.code {
   font-size: 1.2rem;
   pointer-events: none;
 }
+.hud-items {
+  display: flex;
+  gap: 16px;
+}
 .hud button {
   pointer-events: auto;
   min-height: 40px;
