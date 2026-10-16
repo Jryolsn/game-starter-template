@@ -1,7 +1,7 @@
 // Ritar spelet på en canvas och läser styrning från touch (virtuell joystick) och tangentbord.
 
-import type { PlayerInput } from "../../shared/game.ts";
-import * as game from "../../shared/game.ts";
+import type { PlayerInput } from "./logic.ts";
+import * as game from "./logic.ts";
 
 const JOYSTICK_RADIUS = 48; // px
 

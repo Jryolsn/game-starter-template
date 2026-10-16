@@ -1,6 +1,6 @@
 // Rumshantering i minnet. Servern är auktoritativ: den kör spellogiken och skickar ut tillståndet.
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import * as game from "../shared/game.ts";
+import * as game from "../game/logic.ts";
 import {
   type ClientMsg,
   type ErrorCode,

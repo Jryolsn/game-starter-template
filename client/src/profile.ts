@@ -1,6 +1,6 @@
 // Spelarens profil och inställningar, sparade i webbläsaren (localStorage).
 // Profilen skickas till servern när man går med i ett rum; inställningarna stannar på enheten.
-import { PLAYER_COLORS, type PlayerColor } from "../../shared/game.ts";
+import { PLAYER_COLORS, type PlayerColor } from "../../game/logic.ts";
 
 export interface Profile {
   name: string;

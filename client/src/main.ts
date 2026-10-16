@@ -1,10 +1,11 @@
 import "./style.css";
 import { renderSVG } from "uqr";
-import { type GameState, PLAYER_COLORS, type PlayerColor, ranking } from "../../shared/game.ts";
+import { type GameState, PLAYER_COLORS, type PlayerColor } from "../../game/logic.ts";
+import * as gameUi from "../../game/ui.ts";
+import { GameView } from "../../game/view.ts";
 import type { LobbyPlayer, PublicRoom, RoomPhase, RoomSettings, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, inviteFromUrl, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
-import { keepAwake, playTone, releaseAwake, unlockAudio, vibrate } from "./device.ts";
-import { GameView } from "./gameView.ts";
+import { keepAwake, releaseAwake, unlockAudio } from "./device.ts";
 import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
 import { loadProfile, loadSettings, saveProfile, saveSettings } from "./profile.ts";
 
@@ -21,7 +22,7 @@ let hostId = "";
 let players: LobbyPlayer[] = [];
 let phase: RoomPhase | null = null;
 let view: GameView | null = null;
-let hud: { time: HTMLElement; score: HTMLElement } | null = null;
+let hud: HTMLElement | null = null;
 let lastState: GameState | null = null;
 /** Inbjudningsnyckeln till rummet vi är i (följer med i delad länk och QR-kod). */
 let invite = "";
@@ -263,12 +264,9 @@ function showGame() {
   if (view) return;
   keepAwake();
   view = new GameView(me, (input) => conn?.send({ t: "input", input }));
-  hud = { time: h("span"), score: h("span") };
+  hud = h("div", { className: "hud-items" });
   render(
-    h("div", { className: "game" }, [
-      view.canvas,
-      h("div", { className: "hud" }, [hud.time, hud.score, button("Lämna", "", leave)]),
-    ]),
+    h("div", { className: "game" }, [view.canvas, h("div", { className: "hud" }, [hud, button("Lämna", "", leave)])]),
   );
   if (lastState) onState(lastState);
 }
@@ -276,18 +274,18 @@ function showGame() {
 function showResults() {
   showGame();
   const isHost = me === hostId;
-  const top = lastState ? ranking(lastState) : [];
+  const { title, rows } = lastState ? gameUi.results(lastState, solo) : { title: "", rows: [] };
   const overlay = h("div", { className: "overlay" }, [
     h("div", { className: "screen" }, [
-      h("h1", { textContent: solo ? `${top[0]?.score ?? 0} prickar!` : `${top[0]?.name ?? "?"} vann!` }),
+      h("h1", { textContent: title }),
       h(
         "ul",
         { className: "players" },
-        top.map((p, i) =>
+        rows.map((p, i) =>
           h("li", {}, [
             h("span", { className: "dot", style: `background:${p.color}` }),
             h("span", { textContent: `${i + 1}. ${p.name}` }),
-            h("span", { className: "tag", textContent: `${p.score} p` }),
+            h("span", { className: "tag", textContent: p.detail }),
           ]),
         ),
       ),
@@ -525,18 +523,16 @@ function reloadForNewVersion() {
 }
 
 function onState(state: GameState) {
-  const myOld = lastState?.players[me]?.score ?? 0;
-  const myNew = state.players[me]?.score ?? 0;
-  if (lastState && myNew > myOld) {
-    // Exempel på feedback: ändra eller ta bort för ditt spel.
-    vibrate(20);
-    playTone(880, 0.08);
-  }
+  gameUi.feedback(lastState, state, me);
   lastState = state;
   view?.setState(state);
   if (hud) {
-    hud.time.textContent = `⏱ ${Math.ceil(state.timeLeft)}`;
-    hud.score.textContent = `● ${state.players[me]?.score ?? 0}`;
+    const texts = gameUi.hud(state, me);
+    while (hud.children.length < texts.length) hud.append(h("span"));
+    while (hud.children.length > texts.length) hud.lastElementChild?.remove();
+    texts.forEach((t, i) => {
+      hud!.children[i].textContent = t;
+    });
   }
 }
 

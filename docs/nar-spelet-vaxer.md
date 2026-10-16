@@ -6,9 +6,9 @@ Templaten innehåller bara det nästan alla spel behöver. Här är det som ofta
 
 | Behov | Välj | Passar in |
 | --- | --- | --- |
-| Enkla former, få objekt (som exemplet) | Canvas 2D (redan med) | `client/src/gameView.ts` |
+| Enkla former, få objekt (som exemplet) | Canvas 2D (redan med) | `game/view.ts` |
 | Sprites, animationer, partiklar, många objekt | [PixiJS](https://pixijs.com) | Byt ut `GameView.draw()`. Spellogiken och nätverket påverkas inte. |
-| Fysik, scener, tilemaps, inbyggd input | [Phaser](https://phaser.io) | Låt Phaser äga canvasen, men skicka input via `conn.send({ t: "input" })` och rita från serverns state. Använd inte Phasers fysik för multiplayer: fysiken ska köras i `shared/game.ts`. |
+| Fysik, scener, tilemaps, inbyggd input | [Phaser](https://phaser.io) | Låt Phaser äga canvasen, men skicka input via `conn.send({ t: "input" })` och rita från serverns state. Använd inte Phasers fysik för multiplayer: fysiken ska köras i `game/logic.ts`. |
 | Fysik i spellogiken (studs, kollisioner) | [Rapier](https://rapier.rs) (WASM, finns i deterministisk variant) eller [Matter.js](https://brm.io/matter-js) | Körs i `tick()` så att servern och solo-läget räknar likadant. |
 | Quiz, kort, brädspel | Vanlig HTML/CSS | Rita med DOM i stället för canvas; `GameView` kan bytas mot en komponent som renderar `GameState`. |
 
@@ -57,4 +57,4 @@ Templaten har inga konton: den som har koden kommer in.
 
 - **Installera som app (PWA):** manifestet finns. Lägg till en service worker, t.ex. med [vite-plugin-pwa](https://vite-pwa-org.netlify.app), för att solo-läget ska fungera offline.
 - **App Store / Google Play:** [Capacitor](https://capacitorjs.com) paketerar klienten som en riktig app. Servern är densamma.
-- **Liggande läge:** ändra `WORLD` i `game.ts` och `orientation` i `client/public/manifest.webmanifest`.
+- **Liggande läge:** ändra `WORLD` i `game/logic.ts` och `orientation` i `client/public/manifest.webmanifest`.
