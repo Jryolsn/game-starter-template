@@ -39,7 +39,7 @@ Funktionerna som resten av startern anropar:
 - **Solo på mobilen utan server:** `npm run build:solo` ger `dist-solo/index.html`, en enda fil som kan öppnas direkt eller publiceras som artifact. CI bygger den också (ladda ner under Actions → körningen → Artifacts).
 - **Multiplayer lokalt:** `npm run dev` och öppna adressen Vite skriver ut (Network) på två telefoner på samma wifi.
 - **Multiplayer på riktigt:** driftsätt (se nedan) och dela länken.
-- `npm test` och `npm run typecheck` ska vara gröna; CI kör dem på varje push.
+- `npm test`, `npm run typecheck` och `npm run test:e2e` ska vara gröna; CI kör dem på varje push. Uppdatera `e2e/multiplayer.test.ts` om du ändrar skärmarna.
 
 ## 6. Driftsätta
 
@@ -50,6 +50,14 @@ Containern i `Dockerfile` kör allt i en process på port 8080 och har `/health`
 
 Kör bara **en** instans. Rummen ligger i processens minne, så två instanser ser inte varandras rum.
 
+## Ljud, vibration och skärm
+
+Använd hjälpfunktionerna i `client/src/device.ts`. Lägg ljudfiler i `client/public/sounds/` och spela dem med `playSound("/sounds/poang.mp3")`. Feedbacken i exemplet sitter i `onState()` i `client/src/main.ts`.
+
+## Ändrar du protokollet?
+
+Höj `PROTOCOL_VERSION` i `shared/protocol.ts`. Spelare som har en gammal flik öppen vid driftsättningen får då sidan omladdad i stället för konstiga fel.
+
 ## Vanliga justeringar
 
 | Vad | Var |
@@ -58,5 +66,6 @@ Kör bara **en** instans. Rummen ligger i processens minne, så två instanser s
 | Uppdateringsfrekvens | `TICK_HZ` i `shared/protocol.ts` |
 | Kodlängd / tecken | `shared/roomCode.ts` |
 | Hur länge en tappad spelare behåller platsen | `RECONNECT_GRACE_MS` i `server/rooms.ts` |
+| Gränser mot missbruk | miljövariabler `LIMIT_*`, se `server/limits.ts` |
 | Färger och utseende | `client/src/style.css`, `PLAYER_COLORS` i `game.ts` |
 | Spelets namn | `<title>` i `client/index.html`, `client/public/manifest.webmanifest` |

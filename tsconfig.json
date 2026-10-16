@@ -11,5 +11,5 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["shared", "server", "client/src", "scripts", "vite.config.ts"]
+  "include": ["shared", "server", "client/src", "scripts", "e2e", "vite.config.ts"]
 }

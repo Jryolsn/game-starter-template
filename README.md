@@ -18,7 +18,7 @@ npm run build
 npm start          # PORT=8787 som standard
 ```
 
-`npm test` kör enhetstester för rumskoder och rumshantering.
+`npm test` kör enhetstester. `npm run test:e2e` bygger klienten och spelar igenom rum, länk, återanslutning och solo med två simulerade telefoner (första gången: `npx playwright install chromium`).
 
 Solo-läget som en enda fristående HTML-fil (ingen server behövs, bra för att snabbt testa på mobilen eller publicera som artifact):
 
@@ -62,6 +62,17 @@ Flödet:
 3. Rita om i `GameView.draw`.
 
 Servern och solo-läget använder samma logik, så de följer med automatiskt.
+
+## Skydd och drift
+
+- **Validering:** varje meddelande från klienten kontrolleras i `server/validate.ts` innan det når rummen.
+- **Gränser** (`server/limits.ts`, kan ändras med miljövariabler): `LIMIT_MSG_PER_SECOND` (30), `LIMIT_MSG_BURST` (60), `LIMIT_ROOMS_PER_MINUTE` per IP (10), `LIMIT_MAX_ROOMS` (1000), `LIMIT_CONNECTIONS_PER_IP` (20). En klient som spammar kopplas bort.
+- **Versionskoll:** klienten ansluter med `?v=PROTOCOL_VERSION`. Höj `PROTOCOL_VERSION` i `shared/protocol.ts` när meddelandeformatet ändras, så laddar gamla flikar om sig själva efter driftsättningen.
+- **Snygg avstängning:** vid `SIGTERM` får alla spelare beskedet att servern startas om innan anslutningarna stängs, och `/health` svarar 503.
+
+## Mobilkänsla
+
+`client/src/device.ts` har `keepAwake()` (skärmen slocknar inte under en runda), `vibrate()`, och ljud som fungerar på iOS: `unlockAudio()` anropas automatiskt vid knapptryck, sedan `playTone()` eller `playSound(url)`. Exempelspelet vibrerar och piper när du tar en prick.
 
 ## Saker som medvetet är enkla
 
