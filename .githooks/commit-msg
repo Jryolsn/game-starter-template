@@ -1,0 +1,4 @@
+#!/bin/sh
+# Aktiveras av "pnpm install" (prepare-skriptet sätter core.hooksPath).
+[ -x node_modules/.bin/tsx ] || exit 0
+exec node_modules/.bin/tsx scripts/check-ai-traces.ts --msg "$1"

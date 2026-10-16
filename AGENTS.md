@@ -20,3 +20,4 @@ Regler:
 - Ändras meddelandeformatet: höj `PROTOCOL_VERSION`.
 - Efter ändringar: `pnpm lint && pnpm typecheck && pnpm test`, och `pnpm test:e2e` om UI eller nätverk ändrats. `pnpm build:solo` ger en fristående HTML-fil för att testa solo-läget (t.ex. som artifact).
 - UI-texter är på svenska.
+- Inga AI-spår i repot: ingen Co-Authored-By, "Generated with …", sessionslänkar eller omnämnanden av kodassistenter i commits, kodkommentarer, dokumentation eller PR-texter. Commits skrivs i utvecklarens namn. `pnpm check:ai` kontrollerar filer och commits; samma kontroll körs som commit-hook och i CI.
