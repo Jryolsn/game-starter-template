@@ -29,7 +29,7 @@ export class OnlineConnection implements Connection {
   private closed = false;
   private retry = 0;
   /** Senaste rummet vi var med i, för att automatiskt återansluta. */
-  private room?: { code: string; name: string; color?: game.PlayerColor };
+  private room?: { code: string; name: string; color?: game.PlayerColor; invite?: string; password?: string };
 
   constructor(private url = defaultWsUrl()) {
     this.connect();
@@ -37,7 +37,7 @@ export class OnlineConnection implements Connection {
 
   send(msg: ClientMsg): void {
     if (msg.t === "join") {
-      this.room = { code: msg.code, name: msg.name, color: msg.color };
+      this.room = { code: msg.code, name: msg.name, color: msg.color, invite: msg.invite, password: msg.password };
       msg = { ...msg, resume: msg.resume ?? loadResume(msg.code) };
     }
     if (msg.t === "create") this.room = { code: "", name: msg.name, color: msg.color };
@@ -83,12 +83,20 @@ export class OnlineConnection implements Connection {
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data) as ServerMsg;
       if (msg.t === "joined") {
-        this.room = { code: msg.code, name: this.room?.name ?? "", color: this.room?.color };
+        // Spara inbjudningsnyckeln så att en automatisk återanslutning slipper lösenordet.
+        this.room = { code: msg.code, name: this.room?.name ?? "", color: this.room?.color, invite: msg.invite };
         try {
           sessionStorage.setItem(RESUME_KEY, JSON.stringify({ code: msg.code, ...msg.resume }));
         } catch {}
       }
-      if (msg.t === "error" && ["not_found", "full", "server_restart"].includes(msg.code)) this.room = undefined;
+      if (
+        msg.t === "error" &&
+        ["not_found", "full", "server_restart", "password_required", "wrong_password", "locked", "kicked"].includes(
+          msg.code,
+        )
+      ) {
+        this.room = undefined;
+      }
       if (msg.t === "error" && msg.code === "outdated") this.closed = true; // återanslut inte, sidan måste laddas om
       for (const cb of this.listeners) cb(msg);
     };
@@ -131,7 +139,7 @@ export class SoloConnection implements Connection {
   send(msg: ClientMsg): void {
     switch (msg.t) {
       case "create":
-        this.emit({ t: "joined", code: "SOLO", you: this.me, resume: { playerId: this.me, secret: "" } });
+        this.emit({ t: "joined", code: "SOLO", you: this.me, resume: { playerId: this.me, secret: "" }, invite: "" });
         this.emit(this.lobby("lobby"));
         break;
       case "start":
@@ -174,6 +182,7 @@ export class SoloConnection implements Connection {
       t: "lobby",
       hostId: this.me,
       phase,
+      settings: { visibility: "private", hasPassword: false, locked: false },
       players: [{ id: this.me, name: this.name, color: this.color, connected: true }],
     };
   }

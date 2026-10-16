@@ -1,8 +1,8 @@
 import "./style.css";
 import { renderSVG } from "uqr";
 import { type GameState, PLAYER_COLORS, type PlayerColor, ranking } from "../../shared/game.ts";
-import type { LobbyPlayer, RoomPhase, ServerMsg } from "../../shared/protocol.ts";
-import { CODE_LENGTH, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
+import type { LobbyPlayer, PublicRoom, RoomPhase, RoomSettings, ServerMsg } from "../../shared/protocol.ts";
+import { CODE_LENGTH, inviteFromUrl, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
 import { keepAwake, playTone, releaseAwake, unlockAudio, vibrate } from "./device.ts";
 import { GameView } from "./gameView.ts";
 import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
@@ -23,10 +23,18 @@ let phase: RoomPhase | null = null;
 let view: GameView | null = null;
 let hud: { time: HTMLElement; score: HTMLElement } | null = null;
 let lastState: GameState | null = null;
+/** Inbjudningsnyckeln till rummet vi är i (följer med i delad länk och QR-kod). */
+let invite = "";
+let roomSettings: RoomSettings = { visibility: "private", hasPassword: false, locked: false };
+/** Senaste försöket att gå med, så att vi kan fråga efter lösenord och försöka igen. */
+let pendingJoin: { code: string; name: string } | null = null;
+/** Visas listan "Hitta rum" just nu? Då ritas den om när svaret kommer. */
+let browsing = false;
 
 // ---- Skärmar ----
 function showHome(error = "") {
   teardownGame();
+  browsing = false;
   setUrl(null);
   const name = nameInput();
   const codeInput = h("input", {
@@ -66,6 +74,10 @@ function showHome(error = "") {
             button("Skapa rum", "secondary", () => createRoom(name.value)),
             h("div", { className: "divider", textContent: "eller gå med" }),
             h("div", { className: "row" }, [codeInput, button("Gå med", "", join)]),
+            button("Hitta publika rum", "ghost", () => {
+              saveProfile({ name: name.value });
+              showRoomList();
+            }),
           ]),
       err,
       button("Profil och inställningar", "ghost", () => showSettings(false)),
@@ -73,7 +85,7 @@ function showHome(error = "") {
   );
 }
 
-function showJoinFromLink(c: string) {
+function showJoinFromLink(c: string, linkInvite?: string) {
   const name = nameInput();
   render(
     h("div", { className: "screen" }, [
@@ -82,8 +94,73 @@ function showJoinFromLink(c: string) {
       h("div", { className: "room-code", textContent: c }),
       h("div", { className: "spacer" }),
       name,
-      button("Gå med i rummet", "primary", () => joinRoom(c, name.value)),
+      button("Gå med i rummet", "primary", () => joinRoom(c, name.value, { invite: linkInvite })),
       button("Avbryt", "ghost", () => showHome()),
+    ]),
+  );
+}
+
+/** Rummet har lösenord och vi kom inte via länk eller QR-kod. */
+function showPassword(c: string, name: string, error = "") {
+  const input = h("input", {
+    type: "password",
+    placeholder: "Lösenord",
+    maxLength: 32,
+    autocomplete: "off",
+    enterKeyHint: "go",
+  }) as HTMLInputElement;
+  const go = () => joinRoom(c, name, { password: input.value });
+  input.addEventListener("keydown", (e) => e.key === "Enter" && go());
+  render(
+    h("div", { className: "screen" }, [
+      h("h1", { textContent: "Lösenord" }),
+      h("p", { textContent: "Rummet är skyddat. Fråga värden om lösenordet, eller be om länken eller QR-koden." }),
+      h("div", { className: "room-code", textContent: c }),
+      h("div", { className: "spacer" }),
+      input,
+      h("div", { className: "error", textContent: error }),
+      button("Gå med", "primary", go),
+      button("Avbryt", "ghost", () => showHome()),
+    ]),
+  );
+  input.focus();
+}
+
+/** Listan "Hitta rum": publika rum som går att gå med i. */
+function showRoomList(rooms?: PublicRoom[]) {
+  teardownGame();
+  browsing = true;
+  if (!rooms) {
+    useConnection(online());
+    solo = false;
+    conn!.send({ t: "list" });
+  }
+  const name = savedName();
+  const items = (rooms ?? []).map((r) => {
+    const li = h("li", { className: "room" }, [
+      h("span", { textContent: `${r.hasPassword ? "🔒 " : ""}${r.host}${/[sxz]$/i.test(r.host) ? "" : "s"} rum` }),
+      h("span", {
+        className: "tag",
+        textContent: `${r.players}/${r.maxPlayers}${r.phase === "playing" ? " · spelar" : ""}`,
+      }),
+    ]);
+    li.addEventListener("click", () => (r.hasPassword ? showPassword(r.code, name) : joinRoom(r.code, name)));
+    return li;
+  });
+  render(
+    h("div", { className: "screen" }, [
+      h("h1", { textContent: "Hitta rum" }),
+      h("p", {
+        textContent: !rooms
+          ? "Letar…"
+          : items.length
+            ? "Tryck på ett rum för att gå med."
+            : "Inga publika rum just nu. Skapa ett eget!",
+      }),
+      h("ul", { className: "players" }, items),
+      h("div", { className: "spacer" }),
+      button("Uppdatera", "secondary", () => showRoomList()),
+      button("Tillbaka", "ghost", () => showHome()),
     ]),
   );
 }
@@ -100,19 +177,34 @@ function showLobby() {
         button("QR-kod", "", showQr),
         button("Kopiera", "", () => copy(code, "Koden kopierad")),
       ]),
+      h("div", { className: "chips" }, [
+        h("span", { textContent: roomSettings.visibility === "public" ? "🌍 Publikt" : "🔗 Privat" }),
+        ...(roomSettings.hasPassword ? [h("span", { textContent: "🔒 Lösenord" })] : []),
+        ...(roomSettings.locked ? [h("span", { textContent: "⛔ Låst" })] : []),
+        ...(isHost ? [button("Rumsinställningar", "ghost", showRoomSettings)] : []),
+      ]),
       h("p", { textContent: `Spelare (${players.length})` }),
       h(
         "ul",
         { className: "players" },
         players.map((p) => {
-          const tags = [p.id === hostId && "värd", !p.connected && "frånkopplad", p.id === me && "ändra ›"];
-          const li = h("li", { className: `${p.connected ? "" : "offline"} ${p.id === me ? "me" : ""}` }, [
+          const canKick = isHost && p.id !== me;
+          const tags = [
+            p.id === hostId && "värd",
+            !p.connected && "frånkopplad",
+            p.id === me && "ändra ›",
+            canKick && "ta bort ›",
+          ];
+          const cls = `${p.connected ? "" : "offline"} ${p.id === me ? "me" : ""} ${canKick ? "kickable" : ""}`;
+          const li = h("li", { className: cls }, [
             h("span", { className: "dot", style: `background:${p.color}` }),
             h("span", { textContent: p.name + (p.id === me ? " (du)" : "") }),
             h("span", { className: "tag", textContent: tags.filter(Boolean).join(" · ") }),
           ]);
           // Tryck på dig själv för att byta namn eller färg.
           if (p.id === me) li.addEventListener("click", () => showSettings(true));
+          // Värden trycker på en annan spelare för att ta bort hen.
+          if (canKick) li.addEventListener("click", () => confirmKick(p));
           return li;
         }),
       ),
@@ -122,7 +214,49 @@ function showLobby() {
         : h("p", { textContent: "Väntar på att värden startar…", style: "text-align:center" }),
       button("Lämna rummet", "ghost", leave),
     ]),
+    true,
   );
+}
+
+/** Värdens inställningar: publikt/privat, lösenord och lås. */
+function showRoomSettings() {
+  const pub = toggle("Publikt (syns i Hitta rum)", roomSettings.visibility === "public");
+  const lock = toggle("Lås rummet (inga nya spelare)", roomSettings.locked);
+  const password = h("input", {
+    type: "text",
+    placeholder: roomSettings.hasPassword ? "Nytt lösenord (lämna tomt = behåll)" : "Lösenord (valfritt)",
+    maxLength: 32,
+    autocomplete: "off",
+  }) as HTMLInputElement;
+  const removePassword = toggle("Ta bort lösenordet", false);
+  const close = () => overlay.remove();
+  const save = () => {
+    const pw = password.value.trim();
+    conn?.send({
+      t: "settings",
+      visibility: pub.input.checked ? "public" : "private",
+      locked: lock.input.checked,
+      ...(removePassword.input.checked ? { password: null } : pw ? { password: pw } : {}),
+    });
+    close();
+  };
+  const overlay = h("div", { className: "overlay keep" }, [
+    h("div", { className: "screen" }, [
+      h("h2", { textContent: "Rumsinställningar" }),
+      pub.row,
+      password,
+      ...(roomSettings.hasPassword ? [removePassword.row] : []),
+      h("p", {
+        textContent:
+          "Med lösenord behöver den som går med via koden eller listan ange det. Länken och QR-koden släpper in direkt.",
+      }),
+      lock.row,
+      button("Spara", "primary", save),
+      button("Avbryt", "ghost", close),
+    ]),
+  ]);
+  overlay.addEventListener("click", (e) => e.target === overlay && close());
+  app.append(overlay);
 }
 
 function showGame() {
@@ -181,11 +315,13 @@ function createRoom(name: string) {
   conn!.send({ t: "create", name, color });
 }
 
-function joinRoom(c: string, name: string) {
+function joinRoom(c: string, name: string, extra: { invite?: string; password?: string } = {}) {
   const { color } = saveProfile({ name });
   solo = false;
+  browsing = false;
+  pendingJoin = { code: c, name };
   useConnection(online());
-  conn!.send({ t: "join", code: c, name, color });
+  conn!.send({ t: "join", code: c, name, color, ...extra });
 }
 
 /**
@@ -226,7 +362,7 @@ function showSettings(inRoom: boolean) {
     close();
     if (!inRoom) showHome();
   };
-  const overlay = h("div", { className: "overlay" }, [
+  const overlay = h("div", { className: "overlay keep" }, [
     h("div", { className: "screen" }, [
       h("h2", { textContent: "Profil och inställningar" }),
       name,
@@ -256,11 +392,34 @@ function leave() {
 }
 
 /** Stor QR-kod med rummets länk, så att de som sitter bredvid kan scanna värdens skärm. */
+function confirmKick(p: LobbyPlayer) {
+  const overlay = h("div", { className: "overlay" }, [
+    h("div", { className: "screen" }, [
+      h("h2", { textContent: `Ta bort ${p.name}?` }),
+      h("p", {
+        textContent: roomSettings.locked
+          ? "Rummet är låst, så hen kan inte komma tillbaka."
+          : "Hen kan gå med igen. Lås rummet om du vill hålla hen ute.",
+      }),
+      h("div", { className: "spacer" }),
+      button("Ta bort", "primary", () => {
+        conn?.send({ t: "kick", playerId: p.id });
+        overlay.remove();
+      }),
+      button("Avbryt", "ghost", () => overlay.remove()),
+    ]),
+  ]);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  app.append(overlay);
+}
+
 function showQr() {
   const qr = h("div", { className: "qr", ariaLabel: `QR-kod för rum ${code}` });
   qr.setAttribute("role", "img");
-  qr.innerHTML = renderSVG(roomLink(location.origin, code), { border: 2 }); // uqr ger en ren SVG-sträng
-  const overlay = h("div", { className: "overlay" }, [
+  const link = roomLink(location.origin, code, invite);
+  qr.dataset.link = link;
+  qr.innerHTML = renderSVG(link, { border: 2 }); // uqr ger en ren SVG-sträng
+  const overlay = h("div", { className: "overlay keep" }, [
     h("div", { className: "screen" }, [
       h("p", { textContent: "Scanna med kameran för att gå med" }),
       qr,
@@ -273,7 +432,7 @@ function showQr() {
 }
 
 async function shareLink() {
-  const url = roomLink(location.origin, code);
+  const url = roomLink(location.origin, code, invite);
   if (navigator.share) {
     try {
       return await navigator.share({ title: "Spela med mig!", text: `Gå med i mitt rum: ${code}`, url });
@@ -308,6 +467,8 @@ function onMessage(msg: ServerMsg) {
     case "joined":
       code = msg.code;
       me = msg.you;
+      invite = msg.invite;
+      pendingJoin = null;
       if (!solo) setUrl(code);
       break;
     case "lobby": {
@@ -315,6 +476,7 @@ function onMessage(msg: ServerMsg) {
       players = msg.players;
       hostId = msg.hostId;
       phase = msg.phase;
+      roomSettings = msg.settings;
       if (solo && phase === "lobby") return conn.send({ t: "start" }); // solo hoppar över lobbyn
       if (phase === "lobby") showLobby();
       else if (phase === "playing") {
@@ -329,8 +491,18 @@ function onMessage(msg: ServerMsg) {
     case "state":
       onState(msg.state);
       break;
+    case "rooms":
+      if (browsing) showRoomList(msg.rooms);
+      break;
     case "error":
       if (msg.code === "outdated") return reloadForNewVersion();
+      if ((msg.code === "password_required" || msg.code === "wrong_password") && pendingJoin) {
+        return showPassword(pendingJoin.code, pendingJoin.name, msg.code === "wrong_password" ? msg.message : "");
+      }
+      if (msg.code === "locked" || msg.code === "kicked") {
+        phase = null;
+        return showHome(msg.message);
+      }
       if (msg.code === "not_found" || msg.code === "full" || msg.code === "server_restart") {
         phase = null;
         showHome(msg.message);
@@ -411,8 +583,10 @@ function toast(text: string) {
   setTimeout(() => el.remove(), 2200);
 }
 
-function render(el: HTMLElement) {
-  app.replaceChildren(el);
+/** Byt skärm. keepOverlays: behåll öppna paneler (t.ex. inställningar) när lobbyn ritas om. */
+function render(el: HTMLElement, keepOverlays = false) {
+  const keep = keepOverlays ? [...app.querySelectorAll(":scope > .overlay.keep")] : [];
+  app.replaceChildren(el, ...keep);
 }
 
 function button(label: string, kind: string, onClick: () => void): HTMLButtonElement {
@@ -442,5 +616,5 @@ function h<K extends keyof HTMLElementTagNameMap>(
 const linkedCode = SOLO_ONLY ? null : roomCodeFromUrl(new URL(location.href));
 if (linkedCode && loadResume(linkedCode))
   joinRoom(linkedCode, savedName()); // omladdad flik: tillbaka in direkt
-else if (linkedCode) showJoinFromLink(linkedCode);
+else if (linkedCode) showJoinFromLink(linkedCode, inviteFromUrl(new URL(location.href)));
 else showHome();

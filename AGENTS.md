@@ -4,7 +4,7 @@ Startpunkt för webbspel: spela solo eller med andra i samma rum via 4-teckensko
 
 - `shared/game.ts`: spellogiken, ren TS utan DOM/nätverk. Körs på servern OCH i webbläsaren (solo). Ett nytt spel byter i första hand ut den här filen; se `docs/nytt-spel.md`.
 - `shared/protocol.ts`: alla meddelanden klient ↔ server. Ändra båda sidor tillsammans.
-- `server/rooms.ts`: auktoritativ server, rum i minnet, `tick()` 20 Hz, återanslutning med hemlig nyckel.
+- `server/rooms.ts`: auktoritativ server, rum i minnet, `tick()` 20 Hz, återanslutning med hemlig nyckel. Rum är privata eller publika, kan ha lösenord (inbjudningsnyckeln i länken `#k=` går förbi det) och kan låsas. Bara värden ändrar inställningar och tar bort spelare; kontrollera `hostId` i servern för varje sådan åtgärd.
 - `client/src/net.ts`: `OnlineConnection` (WebSocket) och `SoloConnection` (samma protokoll lokalt). UI-koden ska inte veta vilken som används.
 
 - `server/validate.ts` och `server/limits.ts`: validering mot `ClientMsgSchema` och gränser mot missbruk.

@@ -19,9 +19,19 @@ export function normalizeRoomCode(input: string): string | null {
   return cleaned;
 }
 
-/** Länken som delas: https://example.com/r/ABCD */
-export function roomLink(origin: string, code: string): string {
-  return `${origin}/r/${code}`;
+/**
+ * Länken som delas: https://example.com/r/ABCD#k=<inbjudningsnyckel>
+ * Nyckeln ligger efter # så att den aldrig skickas till servern i HTTP-anrop eller syns i loggar.
+ * Med nyckeln slipper man rummets lösenord; utan den räcker koden för rum utan lösenord.
+ */
+export function roomLink(origin: string, code: string, invite?: string): string {
+  return `${origin}/r/${code}${invite ? `#k=${encodeURIComponent(invite)}` : ""}`;
+}
+
+/** Läser inbjudningsnyckeln från länken (#k=...), om den finns. */
+export function inviteFromUrl(url: URL): string | undefined {
+  const k = new URLSearchParams(url.hash.slice(1)).get("k");
+  return k && k.length <= 64 ? k : undefined;
 }
 
 /** Läser rumskod från en URL: stöder både /r/ABCD och ?room=ABCD. */

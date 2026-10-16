@@ -2,6 +2,7 @@
 // Kör: pnpm test:e2e  (bygger klienten först)
 import assert from "node:assert/strict";
 import { type ChildProcess, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 import { type Browser, chromium, devices, type Page } from "playwright";
 import WebSocket from "ws";
@@ -100,6 +101,74 @@ test("byta namn och färg i lobbyn syns för de andra", async () => {
   await guest.locator(".swatch:not(:disabled):not(.selected)").last().click();
   await button(guest, "Spara").click();
   await host.locator(".players li", { hasText: "Nytt namn" }).waitFor();
+});
+
+test("publikt rum med lösenord: listan kräver lösenord, länken släpper in direkt", async () => {
+  const secret = randomUUID().slice(0, 12);
+  const host = await phone();
+  await host.goto(URL_);
+  await host.fill('input[placeholder="Ditt namn"]', "Lisa");
+  await button(host, "Skapa rum").click();
+  await host.locator(".room-code").waitFor();
+
+  await button(host, "Rumsinställningar").click();
+  await host.locator(".toggle", { hasText: "Publikt" }).locator("input").check();
+  await host.fill('.overlay input[placeholder="Lösenord (valfritt)"]', secret);
+  await button(host, "Spara").click();
+  await host.locator(".chips", { hasText: "Lösenord" }).waitFor();
+
+  // Via listan: lösenord krävs.
+  const guest = await phone();
+  await guest.goto(URL_);
+  await guest.fill('input[placeholder="Ditt namn"]', "Gäst");
+  await button(guest, "Hitta publika rum").click();
+  await guest.locator("li.room", { hasText: "🔒 Lisas rum" }).click();
+  await guest.fill('input[placeholder="Lösenord"]', "fel");
+  await button(guest, "Gå med").click();
+  await guest.locator(".error", { hasText: "Fel lösenord" }).waitFor();
+  await guest.fill('input[placeholder="Lösenord"]', secret);
+  await button(guest, "Gå med").click();
+  await host.locator(".players li", { hasText: "Gäst" }).waitFor();
+
+  // Via länken med inbjudningsnyckel: inget lösenord.
+  await button(host, "QR-kod").click();
+  const link = (await host.locator(".qr").getAttribute("data-link"))!;
+  assert.match(link, /\/r\/[A-Z2-9]{4}#k=/);
+  const friend = await phone();
+  await friend.goto(link);
+  await button(friend, "Gå med i rummet").click();
+  await friend.locator(".players li.me").waitFor();
+});
+
+test("låst rum släpper inte in nya spelare", async () => {
+  const host = await phone();
+  await host.goto(URL_);
+  await button(host, "Skapa rum").click();
+  const code = (await host.locator(".room-code").textContent())!;
+  await button(host, "Rumsinställningar").click();
+  await host.locator(".toggle", { hasText: "Lås rummet" }).locator("input").check();
+  await button(host, "Spara").click();
+  await host.locator(".chips", { hasText: "Låst" }).waitFor();
+
+  const guest = await phone();
+  await guest.goto(`${URL_}/r/${code}`);
+  await button(guest, "Gå med i rummet").click();
+  await guest.locator(".error", { hasText: "låst" }).waitFor();
+});
+
+test("värden kan ta bort en spelare", async () => {
+  const host = await phone();
+  await host.goto(URL_);
+  await button(host, "Skapa rum").click();
+  const code = (await host.locator(".room-code").textContent())!;
+
+  const guest = await phone();
+  await guest.goto(`${URL_}/r/${code}`);
+  await button(guest, "Gå med i rummet").click();
+  await host.locator(".players li.kickable").click();
+  await button(host, "Ta bort").click();
+  await guest.locator(".error", { hasText: "tog bort dig" }).waitFor();
+  await host.locator(".players li").nth(1).waitFor({ state: "detached" });
 });
 
 test("gå med via kod", async () => {

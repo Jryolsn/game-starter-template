@@ -1,6 +1,6 @@
 # game-starter-template
 
-Spela själv eller med andra i webbläsaren. Den som skapar ett rum får en kort kod (t.ex. `KJGK`) och en länk (`https://din-domän/r/KJGK`). Koden och länken är samma sak: länken innehåller bara koden.
+Spela själv eller med andra i webbläsaren. Den som skapar ett rum får en kort kod (t.ex. `KJGK`) och en länk (`https://din-domän/r/KJGK`). Länken och QR-koden innehåller koden plus en hemlig inbjudningsnyckel, så den som får länken slipper ett eventuellt lösenord.
 
 ## Kom igång
 
@@ -56,6 +56,20 @@ Flödet:
 3. **Gå med**: skriv in koden, eller öppna länken. Länken visar en "Gå med"-skärm med namnfält och en knapp.
 4. **Tappad anslutning** (vanligt på mobil): klienten återansluter automatiskt och får tillbaka sin plats via en hemlig nyckel i `sessionStorage`. Servern håller platsen i 30 sekunder. Laddar man om fliken hamnar man direkt i rummet igen.
 5. Lämnar värden tar nästa spelare över. Tomma rum tas bort.
+
+## Rum: privata, publika, lösenord och lås
+
+Värden ändrar allt under **Rumsinställningar** i lobbyn.
+
+| Inställning | Vad det betyder |
+| --- | --- |
+| Privat (standard) | Rummet syns inte i listan. Man kommer in med koden eller länken. |
+| Publikt | Rummet syns i **Hitta publika rum** på startsidan, så länge det inte är låst eller fullt. |
+| Lösenord | Krävs för den som skriver in koden eller väljer rummet i listan. Länken och QR-koden bär en inbjudningsnyckel (`/r/KOD#k=…`) som släpper in utan lösenord. Nyckeln ligger efter `#` och skickas därför aldrig med i HTTP-anrop eller serverloggar. |
+| Lås | Inga nya spelare, inte ens med länk. Spelare som redan är med kan återansluta. |
+| Ta bort spelare | Värden trycker på en spelare i listan. Spelaren kan gå med igen om rummet inte är låst, så lås rummet först om hen ska hållas ute. |
+
+Lösenordet ligger i klartext i serverns minne och försvinner med rummet. Fel lösenord räknas mot samma gräns per IP som felgissade koder.
 
 ## Göra ett eget spel
 
