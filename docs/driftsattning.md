@@ -26,12 +26,13 @@ Priser och gratisnivåer ändras ofta, så kontrollera dem hos värden innan du 
 
 En tunnel ger din dator en tillfällig offentlig https-adress, så att vem som helst kan ansluta via länken eller QR-koden. [Cloudflare Tunnel](https://github.com/cloudflare/cloudflared) är gratis, kräver inget konto och stödjer WebSockets.
 
+Installera `cloudflared` en gång: `brew install cloudflared` (macOS) eller `winget install Cloudflare.cloudflared` (Windows). Kör sedan:
+
 ```bash
-pnpm build && pnpm start                       # spelet på http://localhost:8787
-cloudflared tunnel --url http://localhost:8787  # i en annan terminal
+pnpm tunnel
 ```
 
-`cloudflared` installeras med t.ex. `brew install cloudflared` (macOS) eller `winget install Cloudflare.cloudflared` (Windows). Den skriver ut en adress som `https://något-slumpat.trycloudflare.com`. Dela den, eller skapa ett rum och visa QR-koden. Adressen byts varje gång tunneln startas.
+Kommandot bygger spelet, startar servern och tunneln och skriver ut en adress som `https://något-slumpat.trycloudflare.com` och en QR-kod i terminalen. Dela adressen, eller skapa ett rum och visa rummets QR-kod. Ctrl+C stänger allt. Adressen byts varje gång tunneln startas.
 
 ### Render, gratisnivån
 
