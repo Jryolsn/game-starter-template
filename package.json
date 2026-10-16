@@ -14,7 +14,9 @@
     "build:solo": "tsx scripts/build-solo.ts",
     "test:e2e": "pnpm build && tsx --test e2e/*.test.ts",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "check:ai": "tsx scripts/check-ai-traces.ts",
+    "prepare": "node -e \"try{require('node:child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\""
   },
   "dependencies": {
     "tsx": "^4.19.0",
