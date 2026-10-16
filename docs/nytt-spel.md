@@ -2,7 +2,7 @@
 
 ## 1. Skapa projektet
 
-På GitHub: **Use this template → Create a new repository** på `game-starter-template`. Klona och kör:
+Skapa spelets repo med mallens historik, så att förbättringar kan gå åt båda hållen. Stegen finns i [mallen-och-spelen.md](mallen-och-spelen.md#skapa-ett-spel-med-delad-historik). Kör sedan:
 
 ```bash
 pnpm install

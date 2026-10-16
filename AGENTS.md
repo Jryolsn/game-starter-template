@@ -11,6 +11,7 @@ Startpunkt för webbspel: spela solo eller med andra i samma rum via 4-teckensko
 - `client/src/device.ts`: wake lock, vibration och ljud (iOS-upplåsning). Respekterar spelarens inställningar.
 - `client/src/profile.ts`: spelarens namn, färg och inställningar (ljud, vibration) i localStorage.
 
+- `docs/mallen-och-spelen.md`: spelets repo har mallen som remote `template`. En generell förbättring (något alla spel har nytta av) görs som en egen commit utan spelspecifik kod och föreslås för mallen enligt guiden; säg till utvecklaren när en ändring borde gå till mallen.
 - `docs/nar-spelet-vaxer.md`: rekommenderade bibliotek och mönster när ett spel behöver mer än templaten (grafik, UI, fysik, skala, konton). Utgå från den innan nya beroenden läggs till.
 
 Regler:
