@@ -29,7 +29,7 @@ export class OnlineConnection implements Connection {
   private closed = false;
   private retry = 0;
   /** Senaste rummet vi var med i, för att automatiskt återansluta. */
-  private room?: { code: string; name: string };
+  private room?: { code: string; name: string; color?: game.PlayerColor };
 
   constructor(private url = defaultWsUrl()) {
     this.connect();
@@ -37,10 +37,13 @@ export class OnlineConnection implements Connection {
 
   send(msg: ClientMsg): void {
     if (msg.t === "join") {
-      this.room = { code: msg.code, name: msg.name };
+      this.room = { code: msg.code, name: msg.name, color: msg.color };
       msg = { ...msg, resume: msg.resume ?? loadResume(msg.code) };
     }
-    if (msg.t === "create") this.room = { code: "", name: msg.name };
+    if (msg.t === "create") this.room = { code: "", name: msg.name, color: msg.color };
+    if (msg.t === "profile" && this.room) {
+      this.room = { ...this.room, name: msg.name ?? this.room.name, color: msg.color ?? this.room.color };
+    }
     if (msg.t === "leave") {
       this.room = undefined;
       try {
@@ -80,7 +83,7 @@ export class OnlineConnection implements Connection {
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data) as ServerMsg;
       if (msg.t === "joined") {
-        this.room = { code: msg.code, name: this.room?.name ?? "" };
+        this.room = { code: msg.code, name: this.room?.name ?? "", color: this.room?.color };
         try {
           sessionStorage.setItem(RESUME_KEY, JSON.stringify({ code: msg.code, ...msg.resume }));
         } catch {}
@@ -120,7 +123,10 @@ export class SoloConnection implements Connection {
   private loop?: number;
   private readonly me = "solo";
 
-  constructor(private name: string) {}
+  constructor(
+    private name: string,
+    private color: game.PlayerColor = game.PLAYER_COLORS[0],
+  ) {}
 
   send(msg: ClientMsg): void {
     switch (msg.t) {
@@ -130,7 +136,7 @@ export class SoloConnection implements Connection {
         break;
       case "start":
         clearInterval(this.loop);
-        this.state = game.createGame([{ id: this.me, name: this.name, color: game.PLAYER_COLORS[0] }]);
+        this.state = game.createGame([{ id: this.me, name: this.name, color: this.color }]);
         this.emit(this.lobby("playing"));
         this.loop = window.setInterval(() => this.step(), 1000 / TICK_HZ);
         break;
@@ -168,7 +174,7 @@ export class SoloConnection implements Connection {
       t: "lobby",
       hostId: this.me,
       phase,
-      players: [{ id: this.me, name: this.name, color: game.PLAYER_COLORS[0], connected: true }],
+      players: [{ id: this.me, name: this.name, color: this.color, connected: true }],
     };
   }
 

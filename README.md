@@ -76,6 +76,10 @@ Servern och solo-läget använder samma logik, så de följer med automatiskt.
 - **Proxy:** IP-adressen läses från `X-Forwarded-For` (rätt bakom Fly, Render, Railway). Nås servern direkt utan proxy: sätt `TRUST_PROXY=0`, annars kan gränserna per IP kringgås.
 - **Snygg avstängning:** vid `SIGTERM` får alla spelare beskedet att servern startas om innan anslutningarna stängs, och `/health` svarar 503.
 
+## Profil och inställningar
+
+Spelaren väljer namn och färg, och kan slå av ljud och vibration. Det sparas på enheten (`client/src/profile.ts`). I lobbyn trycker man på sig själv för att byta namn eller färg; upptagna färger går inte att välja, och ändringen syns direkt för alla (`{ t: "profile" }`). Mitt i en runda går det inte att ändra.
+
 ## Mobilkänsla
 
 **QR-kod:** i lobbyn visar knappen QR-kod rummets länk som en stor QR-kod ([uqr](https://github.com/unjs/uqr)), så att de som sitter bredvid kan scanna värdens skärm.

@@ -10,7 +10,18 @@ const PLAYER_RADIUS = 4;
 const COIN_RADIUS = 2.5;
 const COIN_COUNT = 6;
 
-export const PLAYER_COLORS = ["#ff5d73", "#4cc9f0", "#ffd166", "#06d6a0", "#b388ff", "#ff9f1c", "#f15bb5", "#a3e635"];
+/** Färgerna spelarna kan välja mellan. Lika många som MAX_PLAYERS, så att alla får en egen. */
+export const PLAYER_COLORS = [
+  "#ff5d73",
+  "#4cc9f0",
+  "#ffd166",
+  "#06d6a0",
+  "#b388ff",
+  "#ff9f1c",
+  "#f15bb5",
+  "#a3e635",
+] as const;
+export type PlayerColor = (typeof PLAYER_COLORS)[number];
 
 /** Ett tal mellan -1 och 1. */
 const axis = v.pipe(v.number(), v.finite(), v.minValue(-1), v.maxValue(1));

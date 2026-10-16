@@ -82,6 +82,26 @@ test("QR-kod med rummets länk visas i lobbyn", async () => {
   assert.equal(await host.locator(".qr").count(), 0);
 });
 
+test("byta namn och färg i lobbyn syns för de andra", async () => {
+  const host = await phone();
+  await host.goto(URL_);
+  await host.fill('input[placeholder="Ditt namn"]', "Värd");
+  await button(host, "Skapa rum").click();
+  const code = (await host.locator(".room-code").textContent())!;
+  const guest = await phone();
+  await guest.goto(`${URL_}/r/${code}`);
+  await button(guest, "Gå med i rummet").click();
+  await guest.locator(".players li.me").waitFor();
+
+  await guest.locator(".players li.me").click();
+  await guest.fill('.overlay input[placeholder="Ditt namn"]', "Nytt namn");
+  // Värdens färg är upptagen och går inte att välja.
+  assert.equal(await guest.locator(".swatch:disabled").count(), 1);
+  await guest.locator(".swatch:not(:disabled):not(.selected)").last().click();
+  await button(guest, "Spara").click();
+  await host.locator(".players li", { hasText: "Nytt namn" }).waitFor();
+});
+
 test("gå med via kod", async () => {
   const host = await phone();
   await host.goto(URL_);

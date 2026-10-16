@@ -60,10 +60,13 @@ export class RoomManager {
   handle(conn: Conn, msg: ClientMsg): void {
     switch (msg.t) {
       case "create":
-        this.create(conn, msg.name);
+        this.create(conn, msg.name, msg.color);
         break;
       case "join":
-        this.join(conn, msg.code, msg.name, msg.resume);
+        this.join(conn, msg.code, msg.name, msg.resume, msg.color);
+        break;
+      case "profile":
+        this.profile(conn, msg.name, msg.color);
         break;
       case "start":
         this.start(conn);
@@ -101,7 +104,7 @@ export class RoomManager {
     this.where.clear();
   }
 
-  private create(conn: Conn, name: string): void {
+  private create(conn: Conn, name: string, color?: string): void {
     if (this.rooms.size >= this.maxRooms) {
       this.error(conn, "too_many_rooms", "Servern är full just nu. Försök igen om en stund.");
       return;
@@ -116,12 +119,18 @@ export class RoomManager {
     while (this.rooms.has(code)) code = generateRoomCode();
     const room: Room = { code, players: new Map(), hostId: "", phase: "lobby", state: null };
     this.rooms.set(code, room);
-    const player = this.addPlayer(room, conn, name);
+    const player = this.addPlayer(room, conn, name, color);
     room.hostId = player.id;
     this.broadcastLobby(room);
   }
 
-  private join(conn: Conn, rawCode: string, name: string, resume?: { playerId: string; secret: string }): void {
+  private join(
+    conn: Conn,
+    rawCode: string,
+    name: string,
+    resume?: { playerId: string; secret: string },
+    color?: string,
+  ): void {
     const ip = conn.ip ?? "?";
     // Koderna är korta, så begränsa felgissningar för att ingen ska kunna leta upp andras rum.
     if (this.failedJoins.isBlocked(ip)) {
@@ -154,7 +163,7 @@ export class RoomManager {
       this.error(conn, "full", "Rummet är fullt.");
       return;
     }
-    const player = this.addPlayer(room, conn, name);
+    const player = this.addPlayer(room, conn, name, color);
     // Sena spelare hoppar in direkt i en pågående runda.
     if (room.state && room.phase === "playing") game.addPlayer(room.state, player);
     this.broadcastLobby(room);
@@ -192,12 +201,36 @@ export class RoomManager {
     this.removePlayer(at.room, at.player);
   }
 
-  private addPlayer(room: Room, conn: Conn, rawName: string): Player {
+  /** Byt namn och/eller färg. Färgen måste vara ledig i rummet. */
+  private profile(conn: Conn, name?: string, color?: string): void {
+    const at = this.where.get(conn);
+    if (!at) return;
+    const { room, player } = at;
+    if (room.phase === "playing") {
+      this.error(conn, "not_now", "Det går inte att ändra mitt i en runda.");
+      return;
+    }
+    if (color && color !== player.color) {
+      if ([...room.players.values()].some((p) => p.color === color)) {
+        this.error(conn, "color_taken", "Färgen är redan tagen.");
+        return;
+      }
+      player.color = color;
+    }
+    if (name !== undefined) player.name = cleanName(name, [...room.players.keys()].indexOf(player.id) + 1);
+    // Resultatskärmen visar namn och färg från spelets state, så uppdatera där också.
+    const inGame = room.state?.players[player.id];
+    if (inGame) Object.assign(inGame, { name: player.name, color: player.color });
+    this.broadcastLobby(room);
+  }
+
+  private addPlayer(room: Room, conn: Conn, rawName: string, wanted?: string): Player {
     const used = new Set([...room.players.values()].map((p) => p.color));
+    const free = game.PLAYER_COLORS.filter((c) => !used.has(c));
     const player: Player = {
       id: randomUUID(),
       name: cleanName(rawName, room.players.size + 1),
-      color: game.PLAYER_COLORS.find((c) => !used.has(c)) ?? game.PLAYER_COLORS[0],
+      color: free.find((c) => c === wanted) ?? free[0] ?? game.PLAYER_COLORS[0],
       secret: randomBytes(16).toString("hex"),
       conn,
     };

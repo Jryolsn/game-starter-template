@@ -1,4 +1,6 @@
-// Hjälpfunktioner för mobilkänsla. Alla är säkra att anropa även där stödet saknas.
+// Hjälpfunktioner för mobilkänsla. Alla är säkra att anropa även där stödet saknas,
+// och ljud och vibration följer spelarens inställningar (profile.ts).
+import { loadSettings } from "./profile.ts";
 
 // ---- Håll skärmen tänd under en runda ----
 let wakeLock: WakeLockSentinel | null = null;
@@ -29,6 +31,7 @@ document.addEventListener("visibilitychange", () => {
 // ---- Vibration ----
 /** Kort vibration som feedback. Stöds på Android; iOS Safari ignorerar det tyst. */
 export function vibrate(pattern: number | number[]): void {
+  if (!loadSettings().vibration) return;
   try {
     navigator.vibrate?.(pattern);
   } catch {}

@@ -35,6 +35,8 @@ test("ogiltiga meddelanden stoppas", () => {
     '{"t":"input","input":[1,2]}',
     '{"t":"input","input":{"x":5,"y":0}}',
     '{"t":"input","input":{"x":"1","y":0}}',
+    '{"t":"profile","color":"#000000"}',
+    '{"t":"create","name":"A","color":"red"}',
   ]) {
     assert.equal(parseClientMsg(raw), null, raw);
   }

@@ -1,14 +1,14 @@
 import "./style.css";
 import { renderSVG } from "uqr";
-import { type GameState, ranking } from "../../shared/game.ts";
+import { type GameState, PLAYER_COLORS, type PlayerColor, ranking } from "../../shared/game.ts";
 import type { LobbyPlayer, RoomPhase, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
 import { keepAwake, playTone, releaseAwake, unlockAudio, vibrate } from "./device.ts";
 import { GameView } from "./gameView.ts";
 import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
+import { loadProfile, loadSettings, saveProfile, saveSettings } from "./profile.ts";
 
 const app = document.getElementById("app")!;
-const NAME_KEY = "spelet.name";
 /** `pnpm build:solo` bygger en fristående HTML-fil utan server, t.ex. för att testa som artifact. */
 const SOLO_ONLY = import.meta.env.VITE_SOLO_ONLY === "1";
 
@@ -68,6 +68,7 @@ function showHome(error = "") {
             h("div", { className: "row" }, [codeInput, button("Gå med", "", join)]),
           ]),
       err,
+      button("Profil och inställningar", "ghost", () => showSettings(false)),
     ]),
   );
 }
@@ -103,13 +104,17 @@ function showLobby() {
       h(
         "ul",
         { className: "players" },
-        players.map((p) =>
-          h("li", { className: p.connected ? "" : "offline" }, [
+        players.map((p) => {
+          const tags = [p.id === hostId && "värd", !p.connected && "frånkopplad", p.id === me && "ändra ›"];
+          const li = h("li", { className: `${p.connected ? "" : "offline"} ${p.id === me ? "me" : ""}` }, [
             h("span", { className: "dot", style: `background:${p.color}` }),
             h("span", { textContent: p.name + (p.id === me ? " (du)" : "") }),
-            h("span", { className: "tag", textContent: p.id === hostId ? "värd" : p.connected ? "" : "frånkopplad" }),
-          ]),
-        ),
+            h("span", { className: "tag", textContent: tags.filter(Boolean).join(" · ") }),
+          ]);
+          // Tryck på dig själv för att byta namn eller färg.
+          if (p.id === me) li.addEventListener("click", () => showSettings(true));
+          return li;
+        }),
       ),
       h("div", { className: "spacer" }),
       isHost
@@ -163,24 +168,84 @@ function showResults() {
 
 // ---- Handlingar ----
 function startSolo(name: string) {
-  saveName(name);
+  const { color } = saveProfile({ name });
   solo = true;
-  useConnection(new SoloConnection(name.trim() || "Du"));
+  useConnection(new SoloConnection(name.trim() || "Du", color));
   conn!.send({ t: "create", name });
 }
 
 function createRoom(name: string) {
-  saveName(name);
+  const { color } = saveProfile({ name });
   solo = false;
   useConnection(online());
-  conn!.send({ t: "create", name });
+  conn!.send({ t: "create", name, color });
 }
 
 function joinRoom(c: string, name: string) {
-  saveName(name);
+  const { color } = saveProfile({ name });
   solo = false;
   useConnection(online());
-  conn!.send({ t: "join", code: c, name });
+  conn!.send({ t: "join", code: c, name, color });
+}
+
+/**
+ * Profil (namn, färg) och inställningar (ljud, vibration).
+ * I ett rum skickas profilen till servern direkt; färger som andra redan har går inte att välja.
+ */
+function showSettings(inRoom: boolean) {
+  const profile = loadProfile();
+  const settings = loadSettings();
+  const mine = players.find((p) => p.id === me);
+  const name = nameInput();
+  if (inRoom && mine) name.value = mine.name;
+  let color: PlayerColor | undefined = (inRoom ? mine?.color : profile.color) as PlayerColor | undefined;
+  const taken = new Set(inRoom ? players.filter((p) => p.id !== me).map((p) => p.color) : []);
+
+  const swatches = PLAYER_COLORS.map((c) => {
+    const b = h("button", {
+      className: "swatch",
+      style: `background:${c}`,
+      ariaLabel: `Färg ${c}`,
+      disabled: taken.has(c),
+    }) as HTMLButtonElement;
+    b.classList.toggle("selected", c === color);
+    b.addEventListener("click", () => {
+      color = c;
+      for (const s of swatches) s.classList.toggle("selected", s === b);
+    });
+    return b;
+  });
+  const sound = toggle("Ljud", settings.sound);
+  const vibration = toggle("Vibration", settings.vibration);
+
+  const close = () => overlay.remove();
+  const save = () => {
+    saveProfile({ name: name.value, color });
+    saveSettings({ sound: sound.input.checked, vibration: vibration.input.checked });
+    if (inRoom) conn?.send({ t: "profile", name: name.value, color });
+    close();
+    if (!inRoom) showHome();
+  };
+  const overlay = h("div", { className: "overlay" }, [
+    h("div", { className: "screen" }, [
+      h("h2", { textContent: "Profil och inställningar" }),
+      name,
+      h("p", { textContent: "Färg" }),
+      h("div", { className: "swatches" }, swatches),
+      sound.row,
+      vibration.row,
+      button("Spara", "primary", save),
+      button("Avbryt", "ghost", close),
+    ]),
+  ]);
+  overlay.addEventListener("click", (e) => e.target === overlay && close());
+  app.append(overlay);
+}
+
+function toggle(label: string, checked: boolean) {
+  const input = h("input", { type: "checkbox", checked }) as HTMLInputElement;
+  const row = h("label", { className: "toggle" }, [h("span", { textContent: label }), input]);
+  return { row, input };
 }
 
 function leave() {
@@ -328,17 +393,7 @@ function nameInput(): HTMLInputElement {
 }
 
 function savedName(): string {
-  try {
-    return localStorage.getItem(NAME_KEY) ?? "";
-  } catch {
-    return ""; // lagring kan vara blockerad (privat läge, inbäddad sida)
-  }
-}
-
-function saveName(name: string) {
-  try {
-    localStorage.setItem(NAME_KEY, name.trim());
-  } catch {}
+  return loadProfile().name;
 }
 
 async function copy(text: string, done: string) {
