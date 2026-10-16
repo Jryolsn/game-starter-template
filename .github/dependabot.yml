@@ -4,10 +4,20 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Typerna ska matcha Node-versionen servern kör (22, se Dockerfile och engines).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
-      dependencies:
-        patterns: ["*"]
+      # Små uppdateringar i en PR, större versioner (som kan kräva ändringar) i en egen.
+      minor-och-patch:
+        update-types: ["minor", "patch"]
+      storre-versioner:
+        update-types: ["major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
