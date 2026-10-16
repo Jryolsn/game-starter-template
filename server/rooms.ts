@@ -5,9 +5,11 @@ import {
   type ClientMsg,
   type ErrorCode,
   MAX_PLAYERS,
+  type PublicRoom,
   type RoomPhase,
   type ServerMsg,
   TICK_HZ,
+  type Visibility,
 } from "../shared/protocol.ts";
 import { generateRoomCode, normalizeRoomCode } from "../shared/roomCode.ts";
 import { LIMITS, WindowCounter } from "./limits.ts";
@@ -35,7 +37,16 @@ interface Room {
   phase: RoomPhase;
   state: game.GameState | null;
   loop?: NodeJS.Timeout;
+  visibility: Visibility;
+  /** Lösenordet i klartext, bara i minnet. null = inget lösenord. */
+  password: string | null;
+  locked: boolean;
+  /** Hemlig nyckel i länken och QR-koden. Den som har den slipper lösenordet. */
+  invite: string;
 }
+
+/** Max antal rum som skickas i listan "Hitta rum". */
+const PUBLIC_LIST_LIMIT = 50;
 
 /** Hur länge en frånkopplad spelare behåller sin plats (mobiler tappar ofta anslutningen). */
 export const RECONNECT_GRACE_MS = 30_000;
@@ -63,7 +74,16 @@ export class RoomManager {
         this.create(conn, msg.name, msg.color);
         break;
       case "join":
-        this.join(conn, msg.code, msg.name, msg.resume, msg.color);
+        this.join(conn, msg);
+        break;
+      case "settings":
+        this.settings(conn, msg);
+        break;
+      case "kick":
+        this.kick(conn, msg.playerId);
+        break;
+      case "list":
+        conn.send({ t: "rooms", rooms: this.publicRooms() });
         break;
       case "profile":
         this.profile(conn, msg.name, msg.color);
@@ -117,20 +137,26 @@ export class RoomManager {
     this.leave(conn);
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
-    const room: Room = { code, players: new Map(), hostId: "", phase: "lobby", state: null };
+    const room: Room = {
+      code,
+      players: new Map(),
+      hostId: "",
+      phase: "lobby",
+      state: null,
+      visibility: "private",
+      password: null,
+      locked: false,
+      invite: randomBytes(12).toString("base64url"),
+    };
     this.rooms.set(code, room);
     const player = this.addPlayer(room, conn, name, color);
     room.hostId = player.id;
     this.broadcastLobby(room);
   }
 
-  private join(
-    conn: Conn,
-    rawCode: string,
-    name: string,
-    resume?: { playerId: string; secret: string },
-    color?: string,
-  ): void {
+  private join(conn: Conn, msg: Extract<ClientMsg, { t: "join" }>): void {
+    const { name, resume, color } = msg;
+    const rawCode = msg.code;
     const ip = conn.ip ?? "?";
     // Koderna är korta, så begränsa felgissningar för att ingen ska kunna leta upp andras rum.
     if (this.failedJoins.isBlocked(ip)) {
@@ -153,12 +179,29 @@ export class RoomManager {
       if (old.conn) this.where.delete(old.conn);
       old.conn = conn;
       this.where.set(conn, { room, player: old });
-      conn.send({ t: "joined", code: room.code, you: old.id, resume: { playerId: old.id, secret: old.secret } });
+      this.sendJoined(room, old);
       this.broadcastLobby(room);
       if (room.state) conn.send({ t: "state", state: room.state });
       return;
     }
 
+    if (room.locked) {
+      this.error(conn, "locked", "Rummet är låst av värden.");
+      return;
+    }
+    // Lösenord krävs om man inte kommer via länken eller QR-koden (som bär inbjudningsnyckeln).
+    const invited = msg.invite !== undefined && safeEqual(msg.invite, room.invite);
+    if (room.password !== null && !invited) {
+      if (msg.password === undefined) {
+        this.error(conn, "password_required", "Rummet har lösenord.");
+        return;
+      }
+      if (!safeEqual(msg.password, room.password)) {
+        this.failedJoins.allow(ip);
+        this.error(conn, "wrong_password", "Fel lösenord.");
+        return;
+      }
+    }
     if (room.players.size >= MAX_PLAYERS) {
       this.error(conn, "full", "Rummet är fullt.");
       return;
@@ -201,6 +244,57 @@ export class RoomManager {
     this.removePlayer(at.room, at.player);
   }
 
+  /** Värden ändrar synlighet, lösenord och lås. */
+  private settings(conn: Conn, msg: Extract<ClientMsg, { t: "settings" }>): void {
+    const at = this.where.get(conn);
+    if (!at) return;
+    const { room, player } = at;
+    if (room.hostId !== player.id) {
+      this.error(conn, "not_host", "Bara värden kan ändra rummets inställningar.");
+      return;
+    }
+    if (msg.visibility) room.visibility = msg.visibility;
+    if (msg.password !== undefined) room.password = msg.password?.trim() || null;
+    if (msg.locked !== undefined) room.locked = msg.locked;
+    this.broadcastLobby(room);
+  }
+
+  /** Värden tar bort en spelare. Hen kan komma tillbaka om rummet inte är låst. */
+  private kick(conn: Conn, playerId: string): void {
+    const at = this.where.get(conn);
+    if (!at) return;
+    const { room, player } = at;
+    if (room.hostId !== player.id) {
+      this.error(conn, "not_host", "Bara värden kan ta bort spelare.");
+      return;
+    }
+    const target = room.players.get(playerId);
+    if (!target || target === player) return;
+    if (target.conn) {
+      this.where.delete(target.conn);
+      this.error(target.conn, "kicked", "Värden tog bort dig från rummet.");
+    }
+    this.removePlayer(room, target);
+  }
+
+  /** Publika rum som går att gå med i just nu (inte låsta, inte fulla). */
+  private publicRooms(): PublicRoom[] {
+    const list: PublicRoom[] = [];
+    for (const room of this.rooms.values()) {
+      if (room.visibility !== "public" || room.locked || room.players.size >= MAX_PLAYERS) continue;
+      list.push({
+        code: room.code,
+        host: room.players.get(room.hostId)?.name ?? "?",
+        players: room.players.size,
+        maxPlayers: MAX_PLAYERS,
+        phase: room.phase,
+        hasPassword: room.password !== null,
+      });
+      if (list.length >= PUBLIC_LIST_LIMIT) break;
+    }
+    return list;
+  }
+
   /** Byt namn och/eller färg. Färgen måste vara ledig i rummet. */
   private profile(conn: Conn, name?: string, color?: string): void {
     const at = this.where.get(conn);
@@ -236,8 +330,18 @@ export class RoomManager {
     };
     room.players.set(player.id, player);
     this.where.set(conn, { room, player });
-    conn.send({ t: "joined", code: room.code, you: player.id, resume: { playerId: player.id, secret: player.secret } });
+    this.sendJoined(room, player);
     return player;
+  }
+
+  private sendJoined(room: Room, player: Player): void {
+    player.conn?.send({
+      t: "joined",
+      code: room.code,
+      you: player.id,
+      resume: { playerId: player.id, secret: player.secret },
+      invite: room.invite,
+    });
   }
 
   private removePlayer(room: Room, player: Player): void {
@@ -262,6 +366,7 @@ export class RoomManager {
       t: "lobby",
       hostId: room.hostId,
       phase: room.phase,
+      settings: { visibility: room.visibility, hasPassword: room.password !== null, locked: room.locked },
       players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color, connected: !!p.conn })),
     });
   }

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { afterEach, test } from "node:test";
 import type { ServerMsg } from "../shared/protocol.ts";
 import { type Conn, RoomManager } from "./rooms.ts";
@@ -168,4 +169,100 @@ test("profilbyte nekas mitt i en runda", () => {
   rooms.handle(a.conn, { t: "start" });
   rooms.handle(a.conn, { t: "profile", name: "Ny" });
   assert.equal(a.last("error").code, "not_now");
+});
+
+function hostRoom(opts: ConstructorParameters<typeof RoomManager>[0] = {}) {
+  rooms = new RoomManager(opts);
+  const host = client();
+  cleanup.push(host.conn);
+  rooms.handle(host.conn, { t: "create", name: "Värd" });
+  return { host, code: host.last("joined").code, invite: host.last("joined").invite };
+}
+
+test("publika rum syns i listan, privata och låsta gör det inte", () => {
+  const { host, code } = hostRoom();
+  const other = client();
+  rooms.handle(other.conn, { t: "list" });
+  assert.deepEqual(other.last("rooms").rooms, []);
+  rooms.handle(host.conn, { t: "settings", visibility: "public" });
+  rooms.handle(other.conn, { t: "list" });
+  assert.deepEqual(
+    other.last("rooms").rooms.map((r) => [r.code, r.host, r.hasPassword]),
+    [[code, "Värd", false]],
+  );
+  rooms.handle(host.conn, { t: "settings", locked: true });
+  rooms.handle(other.conn, { t: "list" });
+  assert.deepEqual(other.last("rooms").rooms, []);
+});
+
+test("lösenord krävs via kod, men inte med inbjudningsnyckeln", () => {
+  const { host, code, invite } = hostRoom();
+  const secret = randomUUID();
+  rooms.handle(host.conn, { t: "settings", password: secret });
+  assert.equal(host.last("lobby").settings.hasPassword, true);
+
+  const a = client();
+  rooms.handle(a.conn, { t: "join", code, name: "A" });
+  assert.equal(a.last("error").code, "password_required");
+  rooms.handle(a.conn, { t: "join", code, name: "A", password: `${secret}x` });
+  assert.equal(a.last("error").code, "wrong_password");
+  rooms.handle(a.conn, { t: "join", code, name: "A", password: secret });
+  assert.equal(a.last("joined").code, code);
+  cleanup.push(a.conn);
+
+  const b = client();
+  cleanup.push(b.conn);
+  rooms.handle(b.conn, { t: "join", code, name: "B", invite });
+  assert.equal(b.last("joined").code, code);
+});
+
+test("låst rum släpper inte in nya men låter spelare återansluta", () => {
+  const { host, code } = hostRoom();
+  const a = client();
+  rooms.handle(a.conn, { t: "join", code, name: "A" });
+  const joined = a.last("joined");
+  rooms.handle(host.conn, { t: "settings", locked: true });
+
+  const b = client();
+  rooms.handle(b.conn, { t: "join", code, name: "B" });
+  assert.equal(b.last("error").code, "locked");
+
+  rooms.disconnected(a.conn);
+  const a2 = client();
+  cleanup.push(a2.conn);
+  rooms.handle(a2.conn, { t: "join", code, name: "A", resume: joined.resume });
+  assert.equal(a2.last("joined").you, joined.you);
+});
+
+test("bara värden kan ändra rummets inställningar", () => {
+  const { code } = hostRoom();
+  const a = client();
+  cleanup.push(a.conn);
+  rooms.handle(a.conn, { t: "join", code, name: "A" });
+  rooms.handle(a.conn, { t: "settings", visibility: "public" });
+  assert.equal(a.last("error").code, "not_host");
+});
+
+test("värden kan ta bort en spelare, andra kan inte", () => {
+  const { host, code } = hostRoom();
+  const a = client();
+  const b = client();
+  cleanup.push(b.conn);
+  rooms.handle(a.conn, { t: "join", code, name: "A" });
+  rooms.handle(b.conn, { t: "join", code, name: "B" });
+  const aId = a.last("joined").you;
+  rooms.handle(b.conn, { t: "kick", playerId: aId });
+  assert.equal(b.last("error").code, "not_host");
+
+  rooms.handle(host.conn, { t: "kick", playerId: aId });
+  assert.equal(a.last("error").code, "kicked");
+  assert.deepEqual(
+    host.last("lobby").players.map((p) => p.name),
+    ["Värd", "B"],
+  );
+  // Den borttagna spelarens gamla nyckel fungerar inte längre.
+  rooms.handle(host.conn, { t: "settings", locked: true });
+  const a2 = client();
+  rooms.handle(a2.conn, { t: "join", code, name: "A", resume: a.last("joined").resume });
+  assert.equal(a2.last("error").code, "locked");
 });

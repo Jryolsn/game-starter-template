@@ -73,4 +73,5 @@ Grafikmotor, UI-ramverk, fysik, konton, flera servrar: se [När spelet växer](n
 | Gränser mot missbruk | miljövariabler `LIMIT_*`, se `server/limits.ts` |
 | Färger och utseende | `client/src/style.css`, `PLAYER_COLORS` i `game.ts` (behåll minst lika många färger som `MAX_PLAYERS`) |
 | Fler spelarinställningar (t.ex. avatar, lag) | Lägg till fältet i `profile`-schemat i `shared/protocol.ts`, hantera det i `RoomManager.profile()` och visa det i `showSettings()` i `main.ts` |
+| Rumsfunktioner (publikt, lösenord, lås, ta bort spelare) | `settings`- och `kick`-meddelandena i `shared/protocol.ts`, `RoomManager.settings()`/`kick()` i `server/rooms.ts`, `showRoomSettings()` i `main.ts`. Behövs de inte i ett spel: ta bort knappen "Rumsinställningar" i `showLobby()`. |
 | Spelets namn | `<title>` i `client/index.html`, `client/public/manifest.webmanifest` |

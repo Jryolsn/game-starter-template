@@ -237,6 +237,9 @@ input.code {
   cursor: pointer;
   outline: 2px solid #ffffff22;
 }
+.players li.kickable {
+  cursor: pointer;
+}
 .players li.me .tag {
   color: var(--accent-2);
 }
@@ -273,4 +276,30 @@ input.code {
   height: 28px;
   min-height: 0;
   accent-color: var(--accent-2);
+}
+
+/* Rum: status, lista */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.chips span {
+  background: var(--panel);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.chips button {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 0.95rem;
+  color: var(--accent-2);
+}
+.players li.room {
+  cursor: pointer;
+  min-height: 56px;
 }
