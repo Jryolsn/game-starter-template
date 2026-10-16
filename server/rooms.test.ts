@@ -127,3 +127,45 @@ test("namn rensas från kontrolltecken och riktningsbyten", () => {
   rooms.handle(a.conn, { t: "create", name: "‮abc\u0000 def" });
   assert.equal(a.last("lobby").players[0].name, "abc def");
 });
+
+test("önskad färg används om den är ledig, annars en ledig färg", () => {
+  rooms = new RoomManager();
+  const a = client();
+  const b = client();
+  cleanup.push(a.conn, b.conn);
+  rooms.handle(a.conn, { t: "create", name: "A", color: "#06d6a0" });
+  rooms.handle(b.conn, { t: "join", code: a.last("joined").code, name: "B", color: "#06d6a0" });
+  const [pa, pb] = a.last("lobby").players;
+  assert.equal(pa.color, "#06d6a0");
+  assert.notEqual(pb.color, "#06d6a0");
+});
+
+test("profilbyte: namn och ledig färg i lobbyn, upptagen färg nekas", () => {
+  rooms = new RoomManager();
+  const a = client();
+  const b = client();
+  cleanup.push(a.conn, b.conn);
+  rooms.handle(a.conn, { t: "create", name: "A" });
+  rooms.handle(b.conn, { t: "join", code: a.last("joined").code, name: "B" });
+  const colorA = a.last("lobby").players[0].color;
+  rooms.handle(b.conn, { t: "profile", name: "Bosse", color: "#a3e635" });
+  assert.deepEqual(
+    a.last("lobby").players.map((p) => [p.name, p.color]),
+    [
+      ["A", colorA],
+      ["Bosse", "#a3e635"],
+    ],
+  );
+  rooms.handle(b.conn, { t: "profile", color: colorA as "#ff5d73" });
+  assert.equal(b.last("error").code, "color_taken");
+});
+
+test("profilbyte nekas mitt i en runda", () => {
+  rooms = new RoomManager();
+  const a = client();
+  cleanup.push(a.conn);
+  rooms.handle(a.conn, { t: "create", name: "A" });
+  rooms.handle(a.conn, { t: "start" });
+  rooms.handle(a.conn, { t: "profile", name: "Ny" });
+  assert.equal(a.last("error").code, "not_now");
+});

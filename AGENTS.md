@@ -8,7 +8,8 @@ Startpunkt för webbspel: spela solo eller med andra i samma rum via 4-teckensko
 - `client/src/net.ts`: `OnlineConnection` (WebSocket) och `SoloConnection` (samma protokoll lokalt). UI-koden ska inte veta vilken som används.
 
 - `server/validate.ts` och `server/limits.ts`: validering mot `ClientMsgSchema` och gränser mot missbruk.
-- `client/src/device.ts`: wake lock, vibration och ljud (iOS-upplåsning).
+- `client/src/device.ts`: wake lock, vibration och ljud (iOS-upplåsning). Respekterar spelarens inställningar.
+- `client/src/profile.ts`: spelarens namn, färg och inställningar (ljud, vibration) i localStorage.
 
 - `docs/nar-spelet-vaxer.md`: rekommenderade bibliotek och mönster när ett spel behöver mer än templaten (grafik, UI, fysik, skala, konton). Utgå från den innan nya beroenden läggs till.
 

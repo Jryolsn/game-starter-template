@@ -71,5 +71,6 @@ Grafikmotor, UI-ramverk, fysik, konton, flera servrar: se [När spelet växer](n
 | Kodlängd / tecken | `shared/roomCode.ts` |
 | Hur länge en tappad spelare behåller platsen | `RECONNECT_GRACE_MS` i `server/rooms.ts` |
 | Gränser mot missbruk | miljövariabler `LIMIT_*`, se `server/limits.ts` |
-| Färger och utseende | `client/src/style.css`, `PLAYER_COLORS` i `game.ts` |
+| Färger och utseende | `client/src/style.css`, `PLAYER_COLORS` i `game.ts` (behåll minst lika många färger som `MAX_PLAYERS`) |
+| Fler spelarinställningar (t.ex. avatar, lag) | Lägg till fältet i `profile`-schemat i `shared/protocol.ts`, hantera det i `RoomManager.profile()` och visa det i `showSettings()` i `main.ts` |
 | Spelets namn | `<title>` i `client/index.html`, `client/public/manifest.webmanifest` |

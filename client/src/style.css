@@ -227,3 +227,50 @@ input.code {
   font-weight: 600;
   z-index: 10;
 }
+
+/* Profil och inställningar */
+.screen h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.players li.me {
+  cursor: pointer;
+  outline: 2px solid #ffffff22;
+}
+.players li.me .tag {
+  color: var(--accent-2);
+}
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.swatch {
+  min-height: 52px;
+  border-radius: 12px;
+  padding: 0;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+}
+.swatch.selected {
+  outline-color: var(--text);
+}
+.swatch:disabled {
+  opacity: 0.2;
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 0 16px;
+  background: var(--panel);
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+}
+.toggle input {
+  width: 28px;
+  height: 28px;
+  min-height: 0;
+  accent-color: var(--accent-2);
+}
