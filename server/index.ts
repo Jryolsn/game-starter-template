@@ -3,10 +3,10 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
-import { WebSocketServer, type WebSocket } from "ws";
-import { PROTOCOL_VERSION, WS_PATH, type ServerMsg } from "../shared/protocol.ts";
+import { type WebSocket, WebSocketServer } from "ws";
+import { PROTOCOL_VERSION, type ServerMsg, WS_PATH } from "../shared/protocol.ts";
 import { LIMITS, RateLimiter } from "./limits.ts";
-import { RoomManager, type Conn } from "./rooms.ts";
+import { type Conn, RoomManager } from "./rooms.ts";
 import { parseClientMsg } from "./validate.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -58,7 +58,7 @@ const http = createServer((req, res) => {
   }
   if (!existsSync(DIST)) {
     res.writeHead(404);
-    return res.end("Klienten är inte byggd. Kör `npm run dev` (utveckling) eller `npm run build` först.");
+    return res.end("Klienten är inte byggd. Kör `pnpm dev` (utveckling) eller `pnpm build` först.");
   }
   // Statiska filer, annars index.html så att länkar som /r/ABCD fungerar.
   let file = join(DIST, normalize(path).replace(/^(\.\.[/\\])+/, ""));

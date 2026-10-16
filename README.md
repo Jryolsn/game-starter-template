@@ -4,9 +4,11 @@ Spela själv eller med andra i webbläsaren. Den som skapar ett rum får en kort
 
 ## Kom igång
 
+Kräver Node 22+ och pnpm (`npm i -g pnpm` eller `corepack enable`). Versionen står i `packageManager` i `package.json`.
+
 ```bash
-npm install
-npm run dev        # server på :8787 + Vite på :5173
+pnpm install
+pnpm dev        # server på :8787 + Vite på :5173
 ```
 
 Öppna http://localhost:5173. Vite lyssnar på hela nätverket, så du kan öppna samma adress från mobilen på samma wifi (använd datorns IP, Vite skriver ut den).
@@ -14,16 +16,16 @@ npm run dev        # server på :8787 + Vite på :5173
 Produktion (en enda Node-process som serverar både spelet och WebSocketen):
 
 ```bash
-npm run build
-npm start          # PORT=8787 som standard
+pnpm build
+pnpm start          # PORT=8787 som standard
 ```
 
-`npm test` kör enhetstester. `npm run test:e2e` bygger klienten och spelar igenom rum, länk, återanslutning och solo med två simulerade telefoner (första gången: `npx playwright install chromium`).
+`pnpm test` kör enhetstester och `pnpm lint` kör Biome (`pnpm format` rättar). `pnpm test:e2e` bygger klienten och spelar igenom rum, länk, återanslutning och solo med två simulerade telefoner (första gången: `pnpm exec playwright install chromium`).
 
 Solo-läget som en enda fristående HTML-fil (ingen server behövs, bra för att snabbt testa på mobilen eller publicera som artifact):
 
 ```bash
-npm run build:solo # → dist-solo/index.html
+pnpm build:solo # → dist-solo/index.html
 ```
 
 Docker (bygger klienten och kör servern på port 8080):

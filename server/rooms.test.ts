@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import type { ServerMsg } from "../shared/protocol.ts";
-import { RoomManager, type Conn } from "./rooms.ts";
+import { type Conn, RoomManager } from "./rooms.ts";
 
 function client() {
   const inbox: ServerMsg[] = [];
   const conn: Conn = { send: (m) => inbox.push(m) };
-  const last = <T extends ServerMsg["t"]>(t: T) => inbox.filter((m) => m.t === t).at(-1) as Extract<ServerMsg, { t: T }>;
+  const last = <T extends ServerMsg["t"]>(t: T) =>
+    inbox.filter((m) => m.t === t).at(-1) as Extract<ServerMsg, { t: T }>;
   return { conn, inbox, last };
 }
 
@@ -28,7 +29,10 @@ test("skapa rum och gå med via kod", () => {
   rooms.handle(b.conn, { t: "join", code: code.toLowerCase(), name: "Bo" });
   assert.equal(b.last("joined").code, code);
   const lobby = a.last("lobby");
-  assert.deepEqual(lobby.players.map((p) => p.name), ["Anna", "Bo"]);
+  assert.deepEqual(
+    lobby.players.map((p) => p.name),
+    ["Anna", "Bo"],
+  );
   assert.equal(lobby.hostId, a.last("joined").you);
 });
 

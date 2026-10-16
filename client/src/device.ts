@@ -47,7 +47,7 @@ export function unlockAudio(): void {
 
 /** Enkel syntetiserad ton, bra som platshållare tills spelet har riktiga ljudfiler. */
 export function playTone(freq: number, seconds: number, volume = 0.15): void {
-  if (!audio || audio.state !== "running") return;
+  if (audio?.state !== "running") return;
   const osc = audio.createOscillator();
   const gain = audio.createGain();
   const t = audio.currentTime;
@@ -62,9 +62,15 @@ export function playTone(freq: number, seconds: number, volume = 0.15): void {
 /** Spela en ljudfil (t.ex. från client/public/sounds). Laddas och cachas vid första användning. */
 const buffers = new Map<string, Promise<AudioBuffer>>();
 export async function playSound(url: string, volume = 1): Promise<void> {
-  if (!audio || audio.state !== "running") return;
+  if (audio?.state !== "running") return;
   const ctx = audio;
-  if (!buffers.has(url)) buffers.set(url, fetch(url).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)));
+  if (!buffers.has(url))
+    buffers.set(
+      url,
+      fetch(url)
+        .then((r) => r.arrayBuffer())
+        .then((b) => ctx.decodeAudioData(b)),
+    );
   try {
     const src = ctx.createBufferSource();
     const gain = ctx.createGain();

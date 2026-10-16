@@ -1,9 +1,16 @@
 // Rumshantering i minnet. Servern är auktoritativ: den kör spellogiken och skickar ut tillståndet.
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import * as game from "../shared/game.ts";
+import {
+  type ClientMsg,
+  type ErrorCode,
+  MAX_PLAYERS,
+  type RoomPhase,
+  type ServerMsg,
+  TICK_HZ,
+} from "../shared/protocol.ts";
 import { generateRoomCode, normalizeRoomCode } from "../shared/roomCode.ts";
 import { LIMITS, WindowCounter } from "./limits.ts";
-import { MAX_PLAYERS, TICK_HZ, type ClientMsg, type ErrorCode, type RoomPhase, type ServerMsg } from "../shared/protocol.ts";
 
 /** Det servern behöver från en anslutning. Gör rummen testbara utan riktiga sockets. */
 export interface Conn {
@@ -53,18 +60,22 @@ export class RoomManager {
   handle(conn: Conn, msg: ClientMsg): void {
     switch (msg.t) {
       case "create":
-        return this.create(conn, msg.name);
+        this.create(conn, msg.name);
+        break;
       case "join":
-        return this.join(conn, msg.code, msg.name, msg.resume);
+        this.join(conn, msg.code, msg.name, msg.resume);
+        break;
       case "start":
-        return this.start(conn);
+        this.start(conn);
+        break;
       case "input": {
         const at = this.where.get(conn);
         if (at?.room.state) game.applyInput(at.room.state, at.player.id, msg.input);
-        return;
+        break;
       }
       case "leave":
-        return this.leave(conn);
+        this.leave(conn);
+        break;
     }
   }
 
@@ -92,10 +103,12 @@ export class RoomManager {
 
   private create(conn: Conn, name: string): void {
     if (this.rooms.size >= this.maxRooms) {
-      return this.error(conn, "too_many_rooms", "Servern är full just nu. Försök igen om en stund.");
+      this.error(conn, "too_many_rooms", "Servern är full just nu. Försök igen om en stund.");
+      return;
     }
     if (!this.creates.allow(conn.ip ?? "?")) {
-      return this.error(conn, "rate_limited", "Du har skapat många rum på kort tid. Vänta en minut.");
+      this.error(conn, "rate_limited", "Du har skapat många rum på kort tid. Vänta en minut.");
+      return;
     }
     this.creates.prune();
     this.leave(conn);
@@ -112,14 +125,16 @@ export class RoomManager {
     const ip = conn.ip ?? "?";
     // Koderna är korta, så begränsa felgissningar för att ingen ska kunna leta upp andras rum.
     if (this.failedJoins.isBlocked(ip)) {
-      return this.error(conn, "rate_limited", "För många felaktiga koder. Vänta en minut.");
+      this.error(conn, "rate_limited", "För många felaktiga koder. Vänta en minut.");
+      return;
     }
     const code = normalizeRoomCode(String(rawCode ?? ""));
     const room = code ? this.rooms.get(code) : undefined;
     if (!room) {
       this.failedJoins.allow(ip);
       this.failedJoins.prune();
-      return this.error(conn, "not_found", "Hittade inget rum med den koden.");
+      this.error(conn, "not_found", "Hittade inget rum med den koden.");
+      return;
     }
     this.leave(conn);
 
@@ -135,7 +150,10 @@ export class RoomManager {
       return;
     }
 
-    if (room.players.size >= MAX_PLAYERS) return this.error(conn, "full", "Rummet är fullt.");
+    if (room.players.size >= MAX_PLAYERS) {
+      this.error(conn, "full", "Rummet är fullt.");
+      return;
+    }
     const player = this.addPlayer(room, conn, name);
     // Sena spelare hoppar in direkt i en pågående runda.
     if (room.state && room.phase === "playing") game.addPlayer(room.state, player);
@@ -146,7 +164,10 @@ export class RoomManager {
     const at = this.where.get(conn);
     if (!at) return;
     const { room, player } = at;
-    if (room.hostId !== player.id) return this.error(conn, "not_host", "Bara värden kan starta.");
+    if (room.hostId !== player.id) {
+      this.error(conn, "not_host", "Bara värden kan starta.");
+      return;
+    }
     if (room.phase === "playing") return;
     room.state = game.createGame([...room.players.values()]);
     room.phase = "playing";

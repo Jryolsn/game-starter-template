@@ -1,9 +1,9 @@
 // End-to-end: startar den byggda servern och spelar med två simulerade telefoner.
-// Kör: npm run test:e2e  (bygger klienten först)
+// Kör: pnpm test:e2e  (bygger klienten först)
 import assert from "node:assert/strict";
-import { spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { after, before, test } from "node:test";
-import { chromium, devices, type Browser, type Page } from "playwright";
+import { type Browser, chromium, devices, type Page } from "playwright";
 import WebSocket from "ws";
 import { PROTOCOL_VERSION } from "../shared/protocol.ts";
 
@@ -18,7 +18,13 @@ before(async () => {
     stdio: "inherit",
   });
   for (let i = 0; i < 50; i++) {
-    if (await fetch(`${URL_}/health`).then((r) => r.ok, () => false)) break;
+    if (
+      await fetch(`${URL_}/health`).then(
+        (r) => r.ok,
+        () => false,
+      )
+    )
+      break;
     await new Promise((r) => setTimeout(r, 100));
   }
   // CHROMIUM_PATH: använd en redan installerad Chromium i stället för Playwrights egen.
@@ -93,7 +99,9 @@ test("solo fungerar utan rum", async () => {
 
 test("gammal klientversion blir ombedd att ladda om", async () => {
   const ws = new WebSocket(`ws://localhost:${PORT}/ws?v=${PROTOCOL_VERSION - 1}`);
-  const msg = await new Promise<{ t: string; code: string }>((resolve) => ws.on("message", (d) => resolve(JSON.parse(String(d)))));
+  const msg = await new Promise<{ t: string; code: string }>((resolve) =>
+    ws.on("message", (d) => resolve(JSON.parse(String(d)))),
+  );
   assert.deepEqual([msg.t, msg.code], ["error", "outdated"]);
   ws.close();
 });
