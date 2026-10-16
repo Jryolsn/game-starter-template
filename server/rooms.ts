@@ -2,11 +2,14 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import * as game from "../shared/game.ts";
 import { generateRoomCode, normalizeRoomCode } from "../shared/roomCode.ts";
+import { LIMITS, WindowCounter } from "./limits.ts";
 import { MAX_PLAYERS, TICK_HZ, type ClientMsg, type ErrorCode, type RoomPhase, type ServerMsg } from "../shared/protocol.ts";
 
 /** Det servern behöver från en anslutning. Gör rummen testbara utan riktiga sockets. */
 export interface Conn {
   send(msg: ServerMsg): void;
+  /** Klientens IP-adress, för gränser per avsändare. */
+  ip?: string;
 }
 
 interface Player {
@@ -33,6 +36,13 @@ export const RECONNECT_GRACE_MS = 30_000;
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private where = new Map<Conn, { room: Room; player: Player }>();
+  private creates: WindowCounter;
+  private maxRooms: number;
+
+  constructor(opts: { maxRooms?: number; roomsPerMinute?: number } = {}) {
+    this.maxRooms = opts.maxRooms ?? LIMITS.maxRooms;
+    this.creates = new WindowCounter(opts.roomsPerMinute ?? LIMITS.roomsPerMinute, 60_000);
+  }
 
   get roomCount(): number {
     return this.rooms.size;
@@ -67,7 +77,25 @@ export class RoomManager {
     this.broadcastLobby(room);
   }
 
+  /** Vid omstart: berätta för alla att servern försvinner och stoppa alla spelloopar. */
+  shutdown(): void {
+    for (const room of this.rooms.values()) {
+      clearInterval(room.loop);
+      for (const p of room.players.values()) clearTimeout(p.dropTimer);
+      this.broadcast(room, { t: "error", code: "server_restart", message: "Servern startas om. Rummet stängs." });
+    }
+    this.rooms.clear();
+    this.where.clear();
+  }
+
   private create(conn: Conn, name: string): void {
+    if (this.rooms.size >= this.maxRooms) {
+      return this.error(conn, "too_many_rooms", "Servern är full just nu. Försök igen om en stund.");
+    }
+    if (!this.creates.allow(conn.ip ?? "?")) {
+      return this.error(conn, "rate_limited", "Du har skapat många rum på kort tid. Vänta en minut.");
+    }
+    this.creates.prune();
     this.leave(conn);
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();

@@ -2,6 +2,7 @@ import "./style.css";
 import { ranking, type GameState } from "../../shared/game.ts";
 import type { LobbyPlayer, RoomPhase, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
+import { keepAwake, playTone, releaseAwake, unlockAudio, vibrate } from "./device.ts";
 import { GameView } from "./gameView.ts";
 import { OnlineConnection, SoloConnection, loadResume, type Connection } from "./net.ts";
 
@@ -116,6 +117,7 @@ function showLobby() {
 
 function showGame() {
   if (view) return;
+  keepAwake();
   view = new GameView(me, (input) => conn?.send({ t: "input", input }));
   hud = { time: h("span"), score: h("span") };
   render(
@@ -241,7 +243,8 @@ function onMessage(msg: ServerMsg) {
       onState(msg.state);
       break;
     case "error":
-      if (msg.code === "not_found" || msg.code === "full") {
+      if (msg.code === "outdated") return reloadForNewVersion();
+      if (msg.code === "not_found" || msg.code === "full" || msg.code === "server_restart") {
         phase = null;
         showHome(msg.message);
       } else toast(msg.message);
@@ -249,7 +252,27 @@ function onMessage(msg: ServerMsg) {
   }
 }
 
+/** Ny version driftsatt: ladda om en gång (skyddat mot omladdningsloopar). */
+function reloadForNewVersion() {
+  const KEY = "spelet.reloadedAt";
+  let last = 0;
+  try {
+    last = Number(sessionStorage.getItem(KEY)) || 0;
+    sessionStorage.setItem(KEY, String(Date.now()));
+  } catch {}
+  if (Date.now() - last > 30_000) return location.reload();
+  phase = null;
+  showHome("Det finns en ny version. Ladda om sidan.");
+}
+
 function onState(state: GameState) {
+  const myOld = lastState?.players[me]?.score ?? 0;
+  const myNew = state.players[me]?.score ?? 0;
+  if (lastState && myNew > myOld) {
+    // Exempel på feedback: ändra eller ta bort för ditt spel.
+    vibrate(20);
+    playTone(880, 0.08);
+  }
   lastState = state;
   view?.setState(state);
   if (hud) {
@@ -260,6 +283,7 @@ function onState(state: GameState) {
 
 // ---- Hjälpfunktioner ----
 function teardownGame() {
+  releaseAwake();
   view?.destroy();
   view = null;
   hud = null;
@@ -316,7 +340,10 @@ function render(el: HTMLElement) {
 
 function button(label: string, kind: string, onClick: () => void): HTMLButtonElement {
   const b = h("button", { className: kind, textContent: label }) as HTMLButtonElement;
-  b.addEventListener("click", onClick);
+  b.addEventListener("click", () => {
+    unlockAudio(); // iOS kräver en tryckning innan ljud får spelas
+    onClick();
+  });
   return b;
 }
 

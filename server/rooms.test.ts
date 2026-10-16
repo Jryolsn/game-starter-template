@@ -73,3 +73,35 @@ test("tomt rum tas bort", () => {
   rooms.handle(a.conn, { t: "leave" });
   assert.equal(rooms.roomCount, 0);
 });
+
+test("för många rum från samma IP stoppas", () => {
+  rooms = new RoomManager({ roomsPerMinute: 2 });
+  const a = client();
+  const conn = { ...a.conn, ip: "1.2.3.4" };
+  cleanup.push(conn);
+  rooms.handle(conn, { t: "create", name: "A" });
+  rooms.handle(conn, { t: "create", name: "A" });
+  rooms.handle(conn, { t: "create", name: "A" });
+  assert.equal(a.last("error").code, "rate_limited");
+  assert.equal(rooms.roomCount, 1); // att skapa ett nytt rum lämnar det förra
+});
+
+test("servern har ett tak för antal rum", () => {
+  rooms = new RoomManager({ maxRooms: 1 });
+  const a = client();
+  const b = client();
+  cleanup.push(a.conn);
+  rooms.handle(a.conn, { t: "create", name: "A" });
+  rooms.handle(b.conn, { t: "create", name: "B" });
+  assert.equal(b.last("error").code, "too_many_rooms");
+});
+
+test("shutdown meddelar spelarna och tömmer rummen", () => {
+  rooms = new RoomManager();
+  const a = client();
+  rooms.handle(a.conn, { t: "create", name: "A" });
+  rooms.handle(a.conn, { t: "start" });
+  rooms.shutdown();
+  assert.equal(a.last("error").code, "server_restart");
+  assert.equal(rooms.roomCount, 0);
+});

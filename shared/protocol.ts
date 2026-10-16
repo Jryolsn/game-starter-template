@@ -29,8 +29,22 @@ export interface Resume {
   secret: string;
 }
 
-export type ErrorCode = "not_found" | "full" | "bad_request" | "not_host";
+export type ErrorCode =
+  | "not_found"
+  | "full"
+  | "bad_request"
+  | "not_host"
+  | "rate_limited"
+  | "too_many_rooms"
+  | "outdated" // klienten kör en äldre version än servern och behöver laddas om
+  | "server_restart";
 
 export const MAX_PLAYERS = 8;
 export const TICK_HZ = 20;
 export const WS_PATH = "/ws";
+
+/**
+ * Höj när meddelandeformatet ändras på ett sätt som inte är bakåtkompatibelt.
+ * Klienter med annan version blir ombedda att ladda om sidan efter en driftsättning.
+ */
+export const PROTOCOL_VERSION = 1;

@@ -7,9 +7,13 @@ Startpunkt för webbspel: spela solo eller med andra i samma rum via 4-teckensko
 - `server/rooms.ts`: auktoritativ server, rum i minnet, `tick()` 20 Hz, återanslutning med hemlig nyckel.
 - `client/src/net.ts`: `OnlineConnection` (WebSocket) och `SoloConnection` (samma protokoll lokalt). UI-koden ska inte veta vilken som används.
 
+- `server/validate.ts` och `server/limits.ts`: formkontroll av klientmeddelanden och gränser mot missbruk.
+- `client/src/device.ts`: wake lock, vibration och ljud (iOS-upplåsning).
+
 Regler:
 - Lita aldrig på klienten: validera all input i `applyInput`.
 - Ingen `Math.random` i spellogiken; använd `rand(state)`.
 - Mobile first: stora tryckytor, inga hover-beroenden, testa i stående format.
-- Efter ändringar: `npm run typecheck && npm test`. `npm run build:solo` ger en fristående HTML-fil för att testa solo-läget (t.ex. som artifact).
+- Ändras meddelandeformatet: uppdatera `server/validate.ts` och höj `PROTOCOL_VERSION`.
+- Efter ändringar: `npm run typecheck && npm test`, och `npm run test:e2e` om UI eller nätverk ändrats. `npm run build:solo` ger en fristående HTML-fil för att testa solo-läget (t.ex. som artifact).
 - UI-texter är på svenska.
