@@ -14,6 +14,13 @@ test("giltiga meddelanden släpps igenom", () => {
   });
 });
 
+test("input valideras mot spelets schema och okända fält tas bort", () => {
+  assert.deepEqual(parseClientMsg('{"t":"input","input":{"x":0.5,"y":-1,"fusk":true}}'), {
+    t: "input",
+    input: { x: 0.5, y: -1 },
+  });
+});
+
 test("ogiltiga meddelanden stoppas", () => {
   for (const raw of [
     "inte json",
@@ -26,6 +33,8 @@ test("ogiltiga meddelanden stoppas", () => {
     '{"t":"join","code":"ABCD","name":"B","resume":"fel"}',
     '{"t":"input","input":null}',
     '{"t":"input","input":[1,2]}',
+    '{"t":"input","input":{"x":5,"y":0}}',
+    '{"t":"input","input":{"x":"1","y":0}}',
   ]) {
     assert.equal(parseClientMsg(raw), null, raw);
   }

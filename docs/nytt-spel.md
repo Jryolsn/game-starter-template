@@ -20,7 +20,7 @@ Funktionerna som resten av startern anropar:
 | `createGame(players, seed?)` | Värden trycker på Starta / Spela igen |
 | `addPlayer(state, player)` | Någon går med mitt i en runda |
 | `removePlayer(state, id)` | Någon lämnar (eller varit borta i 30 s) |
-| `applyInput(state, id, input)` | En spelare skickar styrning. **Validera allt här**, det kommer från klienten. |
+| `applyInput(state, id, input)` | En spelare skickar styrning. Formen är redan kontrollerad mot `PlayerInputSchema`; kontrollera spelregler här (t.ex. att det är din tur). |
 | `tick(state, dt)` | 20 gånger/s. Sätt `state.over = true` när rundan är slut. |
 | `ranking(state)` | Resultatskärmen |
 
@@ -28,7 +28,7 @@ Funktionerna som resten av startern anropar:
 
 ## 3. Ändra styrningen
 
-`PlayerInput` i `game.ts` är det klienten skickar. Exemplet använder en riktning `{ x, y }` från joysticken. För knappar, tryck på skärmen eller sikte: ändra typen och `GameView.updateInput()` i `client/src/gameView.ts`.
+`PlayerInputSchema` i `game.ts` är ett [Valibot](https://valibot.dev)-schema för det klienten skickar; typen `PlayerInput` härleds från det och servern avvisar allt som inte matchar. Ändra schemat, inte bara typen. Exemplet använder en riktning `{ x, y }` från joysticken. För knappar, tryck på skärmen eller sikte: ändra schemat och `GameView.updateInput()` i `client/src/gameView.ts`.
 
 ## 4. Rita spelet
 
@@ -57,6 +57,10 @@ Använd hjälpfunktionerna i `client/src/device.ts`. Lägg ljudfiler i `client/p
 ## Ändrar du protokollet?
 
 Höj `PROTOCOL_VERSION` i `shared/protocol.ts`. Spelare som har en gammal flik öppen vid driftsättningen får då sidan omladdad i stället för konstiga fel.
+
+## Behöver spelet mer?
+
+Grafikmotor, UI-ramverk, fysik, konton, flera servrar: se [När spelet växer](nar-spelet-vaxer.md).
 
 ## Vanliga justeringar
 

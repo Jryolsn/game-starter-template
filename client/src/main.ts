@@ -1,4 +1,5 @@
 import "./style.css";
+import { renderSVG } from "uqr";
 import { type GameState, ranking } from "../../shared/game.ts";
 import type { LobbyPlayer, RoomPhase, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
@@ -95,7 +96,8 @@ function showLobby() {
       h("div", { className: "room-code", textContent: code }),
       h("div", { className: "row" }, [
         button("Dela länk", "secondary", shareLink),
-        button("Kopiera kod", "", () => copy(code, "Koden kopierad")),
+        button("QR-kod", "", showQr),
+        button("Kopiera", "", () => copy(code, "Koden kopierad")),
       ]),
       h("p", { textContent: `Spelare (${players.length})` }),
       h(
@@ -186,6 +188,23 @@ function leave() {
   if (solo) conn?.close();
   phase = null;
   showHome();
+}
+
+/** Stor QR-kod med rummets länk, så att de som sitter bredvid kan scanna värdens skärm. */
+function showQr() {
+  const qr = h("div", { className: "qr", ariaLabel: `QR-kod för rum ${code}` });
+  qr.setAttribute("role", "img");
+  qr.innerHTML = renderSVG(roomLink(location.origin, code), { border: 2 }); // uqr ger en ren SVG-sträng
+  const overlay = h("div", { className: "overlay" }, [
+    h("div", { className: "screen" }, [
+      h("p", { textContent: "Scanna med kameran för att gå med" }),
+      qr,
+      h("div", { className: "room-code", textContent: code }),
+      button("Stäng", "ghost", () => overlay.remove()),
+    ]),
+  ]);
+  overlay.addEventListener("click", (e) => e.target === overlay && overlay.remove());
+  app.append(overlay);
 }
 
 async function shareLink() {

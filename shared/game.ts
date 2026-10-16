@@ -1,6 +1,7 @@
 // Exempelspelet "Prickjakt": styr din boll och plocka flest prickar innan tiden tar slut.
 // Ren logik utan DOM eller nätverk, så samma kod kör på servern (multiplayer) och i webbläsaren (solo).
 // Byt ut den här filen för att göra ett eget spel; behåll funktionerna create/addPlayer/removePlayer/applyInput/tick.
+import * as v from "valibot";
 
 export const WORLD = { width: 90, height: 160 }; // stående format, mobile first
 export const ROUND_SECONDS = 45;
@@ -11,11 +12,19 @@ const COIN_COUNT = 6;
 
 export const PLAYER_COLORS = ["#ff5d73", "#4cc9f0", "#ffd166", "#06d6a0", "#b388ff", "#ff9f1c", "#f15bb5", "#a3e635"];
 
-export interface PlayerInput {
+/** Ett tal mellan -1 och 1. */
+const axis = v.pipe(v.number(), v.finite(), v.minValue(-1), v.maxValue(1));
+
+/**
+ * Det klienten skickar som styrning. Servern validerar mot schemat innan det når applyInput,
+ * så ändra schemat när ditt spel behöver annan input (knappar, sikte, val).
+ */
+export const PlayerInputSchema = v.object({
   /** Önskad riktning, längd 0..1. */
-  x: number;
-  y: number;
-}
+  x: axis,
+  y: axis,
+});
+export type PlayerInput = v.InferOutput<typeof PlayerInputSchema>;
 
 export interface PlayerState {
   id: string;
@@ -84,7 +93,7 @@ export function removePlayer(state: GameState, id: string): void {
 
 export function applyInput(state: GameState, id: string, input: PlayerInput): void {
   const p = state.players[id];
-  if (!p || !Number.isFinite(input.x) || !Number.isFinite(input.y)) return;
+  if (!p) return;
   const len = Math.hypot(input.x, input.y);
   p.input = len > 1 ? { x: input.x / len, y: input.y / len } : { x: input.x, y: input.y };
 }

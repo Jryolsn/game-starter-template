@@ -70,6 +70,18 @@ test("två spelare: skapa rum, gå med via länk, spela, ladda om", async () => 
   await guest.locator(".hud").waitFor({ timeout: 5000 });
 });
 
+test("QR-kod med rummets länk visas i lobbyn", async () => {
+  const host = await phone();
+  await host.goto(URL_);
+  await button(host, "Skapa rum").click();
+  await host.locator(".room-code").waitFor();
+  await button(host, "QR-kod").click();
+  await host.locator(".qr svg").waitFor();
+  if (process.env.SCREENSHOT_DIR) await host.screenshot({ path: `${process.env.SCREENSHOT_DIR}/qr.png` });
+  await button(host, "Stäng").click();
+  assert.equal(await host.locator(".qr").count(), 0);
+});
+
 test("gå med via kod", async () => {
   const host = await phone();
   await host.goto(URL_);

@@ -1,5 +1,7 @@
 // Meddelanden mellan klient och server. Allt är JSON över en WebSocket.
-import type { GameState, PlayerInput } from "./game.ts";
+// Klientens meddelanden beskrivs som Valibot-scheman: de ger både TypeScript-typerna och valideringen på servern.
+import * as v from "valibot";
+import { type GameState, PlayerInputSchema } from "./game.ts";
 
 export interface LobbyPlayer {
   id: string;
@@ -10,12 +12,27 @@ export interface LobbyPlayer {
 
 export type RoomPhase = "lobby" | "playing" | "finished";
 
-export type ClientMsg =
-  | { t: "create"; name: string }
-  | { t: "join"; code: string; name: string; resume?: Resume }
-  | { t: "start" }
-  | { t: "input"; input: PlayerInput }
-  | { t: "leave" };
+const ResumeSchema = v.object({
+  playerId: v.pipe(v.string(), v.maxLength(64)),
+  secret: v.pipe(v.string(), v.maxLength(64)),
+});
+
+const NameSchema = v.pipe(v.string(), v.maxLength(64));
+
+export const ClientMsgSchema = v.variant("t", [
+  v.object({ t: v.literal("create"), name: NameSchema }),
+  v.object({
+    t: v.literal("join"),
+    code: v.pipe(v.string(), v.maxLength(16)),
+    name: NameSchema,
+    resume: v.optional(ResumeSchema),
+  }),
+  v.object({ t: v.literal("start") }),
+  v.object({ t: v.literal("input"), input: PlayerInputSchema }),
+  v.object({ t: v.literal("leave") }),
+]);
+
+export type ClientMsg = v.InferOutput<typeof ClientMsgSchema>;
 
 export type ServerMsg =
   | { t: "joined"; code: string; you: string; resume: Resume }
@@ -24,10 +41,7 @@ export type ServerMsg =
   | { t: "error"; code: ErrorCode; message: string };
 
 /** Hemlighet som låter en spelare återansluta till sin plats (t.ex. efter att mobilen låst skärmen). */
-export interface Resume {
-  playerId: string;
-  secret: string;
-}
+export type Resume = v.InferOutput<typeof ResumeSchema>;
 
 export type ErrorCode =
   | "not_found"
