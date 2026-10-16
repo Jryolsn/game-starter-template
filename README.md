@@ -111,4 +111,4 @@ Spelaren väljer namn och färg, och kan slå av ljud och vibration. Det sparas 
 - Klienten jämnar ut rörelser mellan uppdateringar men gissar inte framåt (ingen client-side prediction).
 - Klient och server på olika domäner: bygg klienten med `VITE_WS_URL=wss://server.example/ws`.
 
-Hosting: allt som kör en långlivad Node-process med WebSockets fungerar, t.ex. Fly.io, Render eller Railway (se [docs/nytt-spel.md](docs/nytt-spel.md#6-driftsätta)). Serverless-plattformar som Vercel passar inte för servern.
+Hosting: allt som kör en långlivad Node-process med WebSockets fungerar, t.ex. Fly.io, Render eller Railway (se [docs/driftsattning.md](docs/driftsattning.md)). Serverless-plattformar som Vercel passar inte för servern.
