@@ -3,7 +3,14 @@
 //  - SoloConnection: en liten server som kör i webbläsaren (spela själv, funkar offline).
 // Resten av klienten vet inte vilken som används.
 import * as game from "../../shared/game.ts";
-import { PROTOCOL_VERSION, TICK_HZ, WS_PATH, type ClientMsg, type Resume, type ServerMsg } from "../../shared/protocol.ts";
+import {
+  type ClientMsg,
+  PROTOCOL_VERSION,
+  type Resume,
+  type ServerMsg,
+  TICK_HZ,
+  WS_PATH,
+} from "../../shared/protocol.ts";
 
 export interface Connection {
   send(msg: ClientMsg): void;
@@ -36,7 +43,9 @@ export class OnlineConnection implements Connection {
     if (msg.t === "create") this.room = { code: "", name: msg.name };
     if (msg.t === "leave") {
       this.room = undefined;
-      sessionStorage.removeItem(RESUME_KEY);
+      try {
+        sessionStorage.removeItem(RESUME_KEY);
+      } catch {}
     }
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
     else if (msg.t !== "input") this.queue.push(msg);
@@ -56,10 +65,11 @@ export class OnlineConnection implements Connection {
   }
 
   private connect(): void {
-    const ws = (this.ws = new WebSocket(this.url));
+    const ws = new WebSocket(this.url);
+    this.ws = ws;
     ws.onopen = () => {
       this.retry = 0;
-      this.statusListeners.forEach((cb) => cb(true));
+      for (const cb of this.statusListeners) cb(true);
       // Efter ett avbrott: gå tillbaka in på samma plats i rummet.
       const queued = this.queue.splice(0);
       if (this.room?.code && !queued.some((m) => m.t === "join" || m.t === "create")) {
@@ -71,15 +81,17 @@ export class OnlineConnection implements Connection {
       const msg = JSON.parse(e.data) as ServerMsg;
       if (msg.t === "joined") {
         this.room = { code: msg.code, name: this.room?.name ?? "" };
-        sessionStorage.setItem(RESUME_KEY, JSON.stringify({ code: msg.code, ...msg.resume }));
+        try {
+          sessionStorage.setItem(RESUME_KEY, JSON.stringify({ code: msg.code, ...msg.resume }));
+        } catch {}
       }
       if (msg.t === "error" && ["not_found", "full", "server_restart"].includes(msg.code)) this.room = undefined;
       if (msg.t === "error" && msg.code === "outdated") this.closed = true; // återanslut inte, sidan måste laddas om
-      this.listeners.forEach((cb) => cb(msg));
+      for (const cb of this.listeners) cb(msg);
     };
     ws.onclose = () => {
       if (this.closed) return;
-      this.statusListeners.forEach((cb) => cb(false));
+      for (const cb of this.statusListeners) cb(false);
       const delay = Math.min(5000, 300 * 2 ** this.retry++);
       setTimeout(() => this.connect(), delay);
     };
@@ -162,6 +174,8 @@ export class SoloConnection implements Connection {
 
   private emit(msg: ServerMsg): void {
     // Asynkront, precis som ett riktigt nätverk, så att klientkoden beter sig likadant.
-    queueMicrotask(() => this.listeners.forEach((cb) => cb(msg)));
+    queueMicrotask(() => {
+      for (const cb of this.listeners) cb(msg);
+    });
   }
 }

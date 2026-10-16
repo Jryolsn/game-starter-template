@@ -1,14 +1,14 @@
 import "./style.css";
-import { ranking, type GameState } from "../../shared/game.ts";
+import { type GameState, ranking } from "../../shared/game.ts";
 import type { LobbyPlayer, RoomPhase, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
 import { keepAwake, playTone, releaseAwake, unlockAudio, vibrate } from "./device.ts";
 import { GameView } from "./gameView.ts";
-import { OnlineConnection, SoloConnection, loadResume, type Connection } from "./net.ts";
+import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
 
 const app = document.getElementById("app")!;
 const NAME_KEY = "spelet.name";
-/** `npm run build:solo` bygger en fristående HTML-fil utan server, t.ex. för att testa som artifact. */
+/** `pnpm build:solo` bygger en fristående HTML-fil utan server, t.ex. för att testa som artifact. */
 const SOLO_ONLY = import.meta.env.VITE_SOLO_ONLY === "1";
 
 // ---- Tillstånd ----
@@ -40,7 +40,10 @@ function showHome(error = "") {
   const err = h("div", { className: "error", textContent: error });
   const join = () => {
     const c = normalizeRoomCode(codeInput.value);
-    if (!c) return (err.textContent = `Koden är ${CODE_LENGTH} tecken.`);
+    if (!c) {
+      err.textContent = `Koden är ${CODE_LENGTH} tecken.`;
+      return;
+    }
     joinRoom(c, name.value);
   };
   codeInput.addEventListener("keydown", (e) => e.key === "Enter" && join());
@@ -216,7 +219,7 @@ function useConnection(c: Connection) {
 
 function onMessage(msg: ServerMsg) {
   // Ignorera sena meddelanden från en anslutning vi inte längre använder.
-  if ((msg.t !== "error" && solo !== (conn instanceof SoloConnection)) || !conn) return;
+  if ((msg.t !== "error" && solo !== conn instanceof SoloConnection) || !conn) return;
   switch (msg.t) {
     case "joined":
       code = msg.code;
@@ -363,6 +366,7 @@ function h<K extends keyof HTMLElementTagNameMap>(
 
 // ---- Start: öppnades spelet via en delad länk? ----
 const linkedCode = SOLO_ONLY ? null : roomCodeFromUrl(new URL(location.href));
-if (linkedCode && loadResume(linkedCode)) joinRoom(linkedCode, savedName()); // omladdad flik: tillbaka in direkt
+if (linkedCode && loadResume(linkedCode))
+  joinRoom(linkedCode, savedName()); // omladdad flik: tillbaka in direkt
 else if (linkedCode) showJoinFromLink(linkedCode);
 else showHome();

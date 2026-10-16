@@ -41,6 +41,11 @@ export class WindowCounter {
     return true;
   }
 
+  /** Har nyckeln nått taket inom fönstret? (räknar inte som en ny händelse) */
+  isBlocked(key: string, now = Date.now()): boolean {
+    return (this.hits.get(key) ?? []).filter((t) => now - t < this.windowMs).length >= this.max;
+  }
+
   /** Rensa gamla nycklar så att kartan inte växer för evigt. */
   prune(now = Date.now()): void {
     for (const [k, ts] of this.hits) if (!ts.some((t) => now - t < this.windowMs)) this.hits.delete(k);
@@ -58,6 +63,8 @@ export const LIMITS = {
   msgBurst: num("LIMIT_MSG_BURST", 60),
   /** Rum som en IP-adress får skapa per minut. */
   roomsPerMinute: num("LIMIT_ROOMS_PER_MINUTE", 10),
+  /** Felaktiga rumskoder per IP och minut innan fler försök stoppas. */
+  failedJoinsPerMinute: num("LIMIT_FAILED_JOINS_PER_MINUTE", 20),
   /** Max antal rum totalt på servern. */
   maxRooms: num("LIMIT_MAX_ROOMS", 1000),
   /** Max samtidiga anslutningar per IP-adress. */

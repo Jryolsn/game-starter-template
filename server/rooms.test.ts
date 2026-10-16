@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import type { ServerMsg } from "../shared/protocol.ts";
-import { RoomManager, type Conn } from "./rooms.ts";
+import { type Conn, RoomManager } from "./rooms.ts";
 
 function client() {
   const inbox: ServerMsg[] = [];
   const conn: Conn = { send: (m) => inbox.push(m) };
-  const last = <T extends ServerMsg["t"]>(t: T) => inbox.filter((m) => m.t === t).at(-1) as Extract<ServerMsg, { t: T }>;
+  const last = <T extends ServerMsg["t"]>(t: T) =>
+    inbox.filter((m) => m.t === t).at(-1) as Extract<ServerMsg, { t: T }>;
   return { conn, inbox, last };
 }
 
@@ -28,7 +29,10 @@ test("skapa rum och gå med via kod", () => {
   rooms.handle(b.conn, { t: "join", code: code.toLowerCase(), name: "Bo" });
   assert.equal(b.last("joined").code, code);
   const lobby = a.last("lobby");
-  assert.deepEqual(lobby.players.map((p) => p.name), ["Anna", "Bo"]);
+  assert.deepEqual(
+    lobby.players.map((p) => p.name),
+    ["Anna", "Bo"],
+  );
   assert.equal(lobby.hostId, a.last("joined").you);
 });
 
@@ -104,4 +108,22 @@ test("shutdown meddelar spelarna och tömmer rummen", () => {
   rooms.shutdown();
   assert.equal(a.last("error").code, "server_restart");
   assert.equal(rooms.roomCount, 0);
+});
+
+test("felgissade koder begränsas per IP", () => {
+  rooms = new RoomManager({ failedJoinsPerMinute: 3 });
+  const a = client();
+  const conn = { ...a.conn, ip: "5.6.7.8" };
+  for (let i = 0; i < 3; i++) rooms.handle(conn, { t: "join", code: "ZZZZ", name: "X" });
+  assert.equal(a.last("error").code, "not_found");
+  rooms.handle(conn, { t: "join", code: "ZZZZ", name: "X" });
+  assert.equal(a.last("error").code, "rate_limited");
+});
+
+test("namn rensas från kontrolltecken och riktningsbyten", () => {
+  rooms = new RoomManager();
+  const a = client();
+  cleanup.push(a.conn);
+  rooms.handle(a.conn, { t: "create", name: "‮abc\u0000 def" });
+  assert.equal(a.last("lobby").players[0].name, "abc def");
 });

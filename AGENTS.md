@@ -15,5 +15,5 @@ Regler:
 - Ingen `Math.random` i spellogiken; använd `rand(state)`.
 - Mobile first: stora tryckytor, inga hover-beroenden, testa i stående format.
 - Ändras meddelandeformatet: uppdatera `server/validate.ts` och höj `PROTOCOL_VERSION`.
-- Efter ändringar: `npm run typecheck && npm test`, och `npm run test:e2e` om UI eller nätverk ändrats. `npm run build:solo` ger en fristående HTML-fil för att testa solo-läget (t.ex. som artifact).
+- Efter ändringar: `pnpm lint && pnpm typecheck && pnpm test`, och `pnpm test:e2e` om UI eller nätverk ändrats. `pnpm build:solo` ger en fristående HTML-fil för att testa solo-läget (t.ex. som artifact).
 - UI-texter är på svenska.

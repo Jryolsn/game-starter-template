@@ -5,8 +5,8 @@
 På GitHub: **Use this template → Create a new repository** på `game-starter-template`. Klona och kör:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ## 2. Skriv spellogiken i `shared/game.ts`
@@ -36,10 +36,10 @@ Funktionerna som resten av startern anropar:
 
 ## 5. Testa
 
-- **Solo på mobilen utan server:** `npm run build:solo` ger `dist-solo/index.html`, en enda fil som kan öppnas direkt eller publiceras som artifact. CI bygger den också (ladda ner under Actions → körningen → Artifacts).
-- **Multiplayer lokalt:** `npm run dev` och öppna adressen Vite skriver ut (Network) på två telefoner på samma wifi.
+- **Solo på mobilen utan server:** `pnpm build:solo` ger `dist-solo/index.html`, en enda fil som kan öppnas direkt eller publiceras som artifact. CI bygger den också (ladda ner under Actions → körningen → Artifacts).
+- **Multiplayer lokalt:** `pnpm dev` och öppna adressen Vite skriver ut (Network) på två telefoner på samma wifi.
 - **Multiplayer på riktigt:** driftsätt (se nedan) och dela länken.
-- `npm test`, `npm run typecheck` och `npm run test:e2e` ska vara gröna; CI kör dem på varje push. Uppdatera `e2e/multiplayer.test.ts` om du ändrar skärmarna.
+- `pnpm lint`, `pnpm typecheck`, `pnpm test` och `pnpm test:e2e` ska vara gröna; CI kör dem på varje push. Uppdatera `e2e/multiplayer.test.ts` om du ändrar skärmarna.
 
 ## 6. Driftsätta
 
