@@ -10,9 +10,36 @@ Tre saker gäller oavsett värd:
 
 Loggarna är JSON-rader (se `server/log.ts`). Sök på `"level":"error"` eller `client_error` i värdens loggvy.
 
+## Gratis för hobbyprojekt
+
+Ingen gratisvärd håller en spelserver vaken dygnet runt. Det här är de gratis vägar som finns:
+
+| Läge | Hur | Nackdel |
+| --- | --- | --- |
+| Spelkväll med kompisar | Din egen dator och en tunnel (nedan) | Spelet finns bara medan datorn är igång |
+| Alltid nåbar, får vara långsam att vakna | Render, gratisnivån (nedan) | Somnar efter 15 minuter utan besök, tar ungefär en minut att vakna, och rummen försvinner |
+| Bara solo | Vercel, Netlify eller GitHub Pages med `pnpm build:solo` | Inget multiplayer, eftersom det inte finns någon server |
+
+Priser och gratisnivåer ändras ofta, så kontrollera dem hos värden innan du väljer.
+
+### Din egen dator och en tunnel
+
+En tunnel ger din dator en tillfällig offentlig https-adress, så att vem som helst kan ansluta via länken eller QR-koden. [Cloudflare Tunnel](https://github.com/cloudflare/cloudflared) är gratis, kräver inget konto och stödjer WebSockets.
+
+```bash
+pnpm build && pnpm start                       # spelet på http://localhost:8787
+cloudflared tunnel --url http://localhost:8787  # i en annan terminal
+```
+
+`cloudflared` installeras med t.ex. `brew install cloudflared` (macOS) eller `winget install Cloudflare.cloudflared` (Windows). Den skriver ut en adress som `https://något-slumpat.trycloudflare.com`. Dela den, eller skapa ett rum och visa QR-koden. Adressen byts varje gång tunneln startas.
+
+### Render, gratisnivån
+
+Som stegen för Render nedan, men välj **Free** som instans. Bra för att ha en demo uppe utan kostnad. Den som kommer först efter en paus väntar ungefär en minut, och pågående rum försvinner när tjänsten somnar.
+
 ## Fly.io
 
-Rekommenderas: billigt, region i Stockholm (`arn`) och bra stöd för WebSockets.
+Rekommenderas när spelet ska vara vaket hela tiden (ungefär 2 dollar i månaden för den minsta maskinen). Fly har ingen gratisnivå, bara en kort provperiod. Region i Stockholm (`arn`) och bra stöd för WebSockets.
 
 ```bash
 fly launch --no-deploy --region arn   # skapar fly.toml från Dockerfilen
@@ -62,7 +89,7 @@ Enklast att klicka igång.
 1. **New → Web Service**, välj repot och **Docker** som runtime. Välj region Frankfurt.
 2. **Health Check Path:** `/health`.
 3. **Environment:** `ALLOWED_ORIGINS=https://mittspel.onrender.com`.
-4. Välj en betald instans (Starter). Gratisnivån somnar efter en stunds inaktivitet och tappar då rummen.
+4. Välj **Starter** (betald) för en tjänst som alltid är vaken, eller **Free** för en demo som får somna (se ovan).
 
 Render driftsätter automatiskt vid varje push till main. Stäng av det under **Settings → Auto-Deploy** om CI ska vara grön först, och använd i stället en deploy hook från ett CI-jobb.
 
