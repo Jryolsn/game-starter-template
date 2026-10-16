@@ -6,12 +6,15 @@ import { GameView } from "../../game/view.ts";
 import type { LobbyPlayer, PublicRoom, RoomPhase, RoomSettings, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, inviteFromUrl, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
 import { keepAwake, releaseAwake, unlockAudio } from "./device.ts";
+import { reportErrors } from "./errors.ts";
 import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
 import { loadProfile, loadSettings, saveProfile, saveSettings } from "./profile.ts";
 
 const app = document.getElementById("app")!;
 /** `pnpm build:solo` bygger en fristående HTML-fil utan server, t.ex. för att testa som artifact. */
 const SOLO_ONLY = import.meta.env.VITE_SOLO_ONLY === "1";
+// Solo-filen har ingen server att rapportera till.
+if (!SOLO_ONLY) reportErrors();
 
 // ---- Tillstånd ----
 let conn: Connection | null = null;

@@ -9,6 +9,7 @@ Startpunkt för webbspel: spela solo eller med andra i samma rum via 4-teckensko
 - `client/src/net.ts`: `OnlineConnection` (WebSocket) och `SoloConnection` (samma protokoll lokalt). UI-koden ska inte veta vilken som används.
 
 - `server/validate.ts` och `server/limits.ts`: validering mot `ClientMsgSchema` och gränser mot missbruk.
+- `server/log.ts`: loggning (JSON i produktion). Använd `log.info/warn/error("händelse", { fält })`, inte `console.log`. `client/src/errors.ts` skickar webbläsarens fel till servern.
 - `client/src/device.ts`: wake lock, vibration och ljud (iOS-upplåsning). Respekterar spelarens inställningar.
 - `client/src/profile.ts`: spelarens namn, färg och inställningar (ljud, vibration) i localStorage.
 

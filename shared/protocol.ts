@@ -76,6 +76,17 @@ export const ClientMsgSchema = v.variant("t", [
 
 export type ClientMsg = v.InferOutput<typeof ClientMsgSchema>;
 
+/** Ett JavaScript-fel från en spelares webbläsare, skickas med POST till LOG_PATH. */
+export const ClientErrorSchema = v.object({
+  message: v.pipe(v.string(), v.maxLength(500)),
+  stack: v.optional(v.pipe(v.string(), v.maxLength(2000))),
+  /** Var i appen felet hände, t.ex. "/r/ABCD". */
+  page: v.optional(v.pipe(v.string(), v.maxLength(200))),
+  version: v.optional(v.number()),
+});
+export type ClientError = v.InferOutput<typeof ClientErrorSchema>;
+export const LOG_PATH = "/log";
+
 export type ServerMsg =
   | { t: "joined"; code: string; you: string; resume: Resume; invite: string }
   | { t: "lobby"; players: LobbyPlayer[]; hostId: string; phase: RoomPhase; settings: RoomSettings }
@@ -100,7 +111,8 @@ export type ErrorCode =
   | "rate_limited"
   | "too_many_rooms"
   | "outdated" // klienten kör en äldre version än servern och behöver laddas om
-  | "server_restart";
+  | "server_restart"
+  | "internal"; // fel på servern, t.ex. en bugg i spellogiken
 
 export const MAX_PLAYERS = 8;
 export const TICK_HZ = 20;

@@ -38,6 +38,7 @@ Börjar lobbyn, inställningar och resultatskärmar växa (formulär, listor, fl
 - **Flera servrar:** rummen ligger i minnet, så antingen styr man varje rumskod till samma instans (t.ex. Fly.io `fly-replay`), eller lägger rumsstate i [Redis](https://redis.io).
 - **Rum som överlever omstart:** spara `GameState` i Redis eller en databas vid varje runda.
 - **Fly.io:** `fly launch` skapar `fly.toml` från Dockerfilen. Sätt `min_machines_running = 1` och kör en maskin så länge rummen ligger i minnet.
+- **Infrastruktur som kod (Pulumi, Terraform):** inte värt det för en enda container; plattformens konfigfil (t.ex. `fly.toml`) räcker. Ta in det när spelet har flera delar som ska hållas ihop, t.ex. server + databas + Redis + DNS, eller flera miljöer (test och produktion).
 
 ## Konton och sociala funktioner
 
@@ -45,11 +46,12 @@ Templaten har inga konton: den som har koden kommer in.
 
 - **Inloggning, topplistor, profiler:** en separat webbplats eller ett API bredvid spelservern, t.ex. Next.js eller [Supabase](https://supabase.com) (auth + databas). Spelservern kan verifiera en token i `join`-meddelandet.
 - **Sparade framsteg utan konto:** `localStorage` på klienten räcker ofta.
-- **Kasta ut spelare / låsa rummet:** lägg till meddelanden i `ClientMsgSchema` (t.ex. `{ t: "kick", playerId }`) och kontrollera att avsändaren är värd i `server/rooms.ts`, på samma sätt som `start`.
+- **Fler värdfunktioner** (t.ex. byta värd, tysta chatt): lägg till meddelanden i `ClientMsgSchema` och kontrollera att avsändaren är värd i `server/rooms.ts`, på samma sätt som `kick` och `settings`.
 
 ## Övervakning
 
-- **Fel i webbläsare och server:** [Sentry](https://sentry.io) eller liknande när spelet har riktiga spelare.
+- **Loggar finns redan:** servern skriver JSON-rader (`server/log.ts`) och tar emot fel från webbläsarna (`client/src/errors.ts` → `POST /log`). Läs dem i plattformens loggvy, t.ex. `fly logs`, och sök på `"level":"error"` eller `client_error`.
+- **Mer än loggar:** [Sentry](https://sentry.io) eller liknande när spelet har riktiga spelare och du vill ha larm, gruppering av fel och källkodsrader. Lägg anropet i `report()` i `client/src/errors.ts` och bredvid `log.error` på servern.
 - **Hälsa:** `/health` finns redan; koppla den till plattformens hälsokontroll eller en extern uptime-tjänst.
 - **Statistik:** något integritetsvänligt som [Plausible](https://plausible.io) räcker oftast för en spelsida.
 
