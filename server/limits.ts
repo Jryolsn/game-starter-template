@@ -69,4 +69,6 @@ export const LIMITS = {
   maxRooms: num("LIMIT_MAX_ROOMS", 1000),
   /** Max samtidiga anslutningar per IP-adress. */
   connectionsPerIp: num("LIMIT_CONNECTIONS_PER_IP", 20),
+  /** Felrapporter från webbläsare per IP och minut (POST /log). */
+  clientErrorsPerMinute: num("LIMIT_CLIENT_ERRORS_PER_MINUTE", 10),
 };

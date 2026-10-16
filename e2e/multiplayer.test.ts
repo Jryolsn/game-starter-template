@@ -12,11 +12,17 @@ const PORT = 8790 + Math.floor(Math.random() * 100);
 const URL_ = `http://localhost:${PORT}`;
 let server: ChildProcess;
 let browser: Browser;
+/** Serverns loggrader (stderr), för att kontrollera felrapporter. */
+let serverLog = "";
 
 before(async () => {
   server = spawn(process.execPath, ["--import", "tsx", "server/index.ts"], {
     env: { ...process.env, PORT: String(PORT), NODE_ENV: "production" },
-    stdio: "inherit",
+    stdio: ["ignore", "inherit", "pipe"],
+  });
+  server.stderr?.on("data", (d) => {
+    serverLog += d;
+    process.stderr.write(d);
   });
   for (let i = 0; i < 50; i++) {
     if (
@@ -217,4 +223,31 @@ test("sidan skickas med säkerhetsheaders", async () => {
   const res = await fetch(URL_);
   assert.match(res.headers.get("content-security-policy") ?? "", /frame-ancestors 'none'/);
   assert.equal(res.headers.get("x-content-type-options"), "nosniff");
+});
+
+test("fel i webbläsaren hamnar i serverns logg", async () => {
+  const page = await phone();
+  page.removeAllListeners("pageerror"); // felet nedan är avsiktligt
+  await page.goto(URL_);
+  await page.evaluate(() =>
+    setTimeout(() => {
+      throw new Error("avsiktligt testfel");
+    }),
+  );
+  for (let i = 0; i < 50 && !serverLog.includes("avsiktligt testfel"); i++)
+    await new Promise((r) => setTimeout(r, 100));
+  const line = serverLog.split("\n").find((l) => l.includes("avsiktligt testfel"));
+  assert.ok(line, "felet loggades inte");
+  const entry = JSON.parse(line);
+  assert.equal(entry.event, "client_error");
+  assert.equal(entry.page, "/");
+});
+
+test("felrapporter valideras och begränsas", async () => {
+  const post = (body: string) => fetch(`${URL_}/log`, { method: "POST", body }).then((r) => r.status);
+  assert.equal(await post("inte json"), 400);
+  assert.equal(await post(JSON.stringify({ message: 123 })), 400);
+  const statuses = [];
+  for (let i = 0; i < 12; i++) statuses.push(await post(JSON.stringify({ message: `fel ${i}` })));
+  assert.ok(statuses.includes(429), "ingen gräns för felrapporter");
 });

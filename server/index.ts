@@ -1,11 +1,13 @@
 // HTTP + WebSocket-server. I produktion serverar den även den byggda klienten (dist/),
 // så hela spelet kan driftas som en enda Node-process.
 import { createReadStream, existsSync, statSync } from "node:fs";
-import { createServer, type IncomingMessage } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
+import * as v from "valibot";
 import { type WebSocket, WebSocketServer } from "ws";
-import { PROTOCOL_VERSION, type ServerMsg, WS_PATH } from "../shared/protocol.ts";
-import { LIMITS, RateLimiter } from "./limits.ts";
+import { ClientErrorSchema, LOG_PATH, PROTOCOL_VERSION, type ServerMsg, WS_PATH } from "../shared/protocol.ts";
+import { LIMITS, RateLimiter, WindowCounter } from "./limits.ts";
+import { errorFields, log } from "./log.ts";
 import { type Conn, RoomManager } from "./rooms.ts";
 import { parseClientMsg } from "./validate.ts";
 
@@ -22,6 +24,8 @@ const MIME: Record<string, string> = {
 };
 
 const rooms = new RoomManager();
+/** Fel från webbläsare: högst så här många per IP och minut, så att loggen inte kan översvämmas. */
+const clientErrors = new WindowCounter(LIMITS.clientErrorsPerMinute, 60_000);
 const connectionsPerIp = new Map<string, number>();
 let shuttingDown = false;
 
@@ -56,6 +60,7 @@ const http = createServer((req, res) => {
     res.writeHead(shuttingDown ? 503 : 200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ ok: !shuttingDown, rooms: rooms.roomCount, version: PROTOCOL_VERSION }));
   }
+  if (path === LOG_PATH && req.method === "POST") return receiveClientError(req, res);
   if (!existsSync(DIST)) {
     res.writeHead(404);
     return res.end("Klienten är inte byggd. Kör `pnpm dev` (utveckling) eller `pnpm build` först.");
@@ -113,7 +118,13 @@ wss.on("connection", (ws, req) => {
     }
     const msg = parseClientMsg(String(data));
     if (!msg) return send({ t: "error", code: "bad_request", message: "Ogiltigt meddelande." });
-    rooms.handle(conn, msg);
+    try {
+      rooms.handle(conn, msg);
+    } catch (err) {
+      // Ett fel i ett meddelande ska inte krascha servern och alla andras rum.
+      log.error("handle_failed", { t: msg.t, ...errorFields(err) });
+      send({ t: "error", code: "internal", message: "Något gick fel på servern." });
+    }
   });
   ws.on("close", () => {
     const left = (connectionsPerIp.get(ip) ?? 1) - 1;
@@ -122,6 +133,38 @@ wss.on("connection", (ws, req) => {
     rooms.disconnected(conn);
   });
 });
+
+/** Tar emot ett fel från en spelares webbläsare och skriver det i serverns logg. */
+function receiveClientError(req: IncomingMessage, res: ServerResponse): void {
+  const done = (status: number) => {
+    res.writeHead(status);
+    res.end();
+  };
+  if (!clientErrors.allow(clientIp(req))) {
+    clientErrors.prune();
+    req.resume();
+    done(429);
+    return;
+  }
+  let body = "";
+  req.setEncoding("utf8");
+  req.on("data", (chunk: string) => {
+    body += chunk;
+    if (body.length > 4096) req.destroy();
+  });
+  req.on("end", () => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return done(400);
+    }
+    const result = v.safeParse(ClientErrorSchema, parsed);
+    if (!result.success) return done(400);
+    log.warn("client_error", { ...result.output, ua: String(req.headers["user-agent"] ?? "").slice(0, 200) });
+    done(204);
+  });
+}
 
 /** Bakom en proxy (Fly, Render, Railway) är klientens adress den sista i X-Forwarded-For. */
 function clientIp(req: IncomingMessage): string {
@@ -147,7 +190,7 @@ const heartbeat = setInterval(() => {
 function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`${signal}: stänger servern`);
+  log.info("shutdown", { signal, rooms: rooms.roomCount });
   clearInterval(heartbeat);
   rooms.shutdown();
   for (const ws of wss.clients) ws.close(1012, "server restart");
@@ -157,4 +200,14 @@ function shutdown(signal: string) {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
-http.listen(PORT, () => console.log(`Servern lyssnar på http://localhost:${PORT} (WebSocket ${WS_PATH})`));
+// Ett oväntat fel: logga det med stack så att det går att felsöka, och starta om processen
+// (hostens omstart ger ett rent läge; ett halvtrasigt tillstånd är värre).
+process.on("uncaughtException", (err) => {
+  log.error("uncaught_exception", errorFields(err));
+  process.exit(1);
+});
+process.on("unhandledRejection", (err) => log.error("unhandled_rejection", errorFields(err)));
+
+http.listen(PORT, () =>
+  log.info("listening", { url: `http://localhost:${PORT}`, ws: WS_PATH, version: PROTOCOL_VERSION }),
+);

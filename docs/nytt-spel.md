@@ -47,10 +47,9 @@ Funktionerna som resten av startern anropar:
 
 Containern i `Dockerfile` kör allt i en process på port 8080 och har `/health` för hälsokontroller.
 
-- **Fly.io:** `fly launch` (hittar Dockerfile), sedan `fly deploy`. Kör en maskin; rummen ligger i minnet.
-- **Render / Railway:** nytt "Web Service" från repot, välj Docker. Sätt health check till `/health`.
+Steg för Fly.io, Render och Railway, och automatisk driftsättning från CI, finns i [driftsattning.md](driftsattning.md).
 
-Kör bara **en** instans. Rummen ligger i processens minne, så två instanser ser inte varandras rum.
+Kör bara **en** instans och låt den inte somna. Rummen ligger i processens minne.
 
 ## Ljud, vibration och skärm
 

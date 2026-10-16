@@ -91,6 +91,7 @@ Servern och solo-läget använder samma logik, så de följer med automatiskt.
 - **Rumskoder:** felgissade koder begränsas per IP (`LIMIT_FAILED_JOINS_PER_MINUTE`, 20), så ingen kan leta igenom koder för att hitta andras rum.
 - **Origin:** sätt `ALLOWED_ORIGINS=https://dittspel.se` för att bara tillåta WebSocket-anslutningar från din egen sida.
 - **Proxy:** IP-adressen läses från `X-Forwarded-For` (rätt bakom Fly, Render, Railway). Nås servern direkt utan proxy: sätt `TRUST_PROXY=0`, annars kan gränserna per IP kringgås.
+- **Loggar:** servern skriver en JSON-rad per händelse i produktion (`server/log.ts`, `LOG_LEVEL=debug|info|warn|error`). Fel i spelarnas webbläsare skickas till `POST /log` och loggas som `client_error` (högst `LIMIT_CLIENT_ERRORS_PER_MINUTE`, 10, per IP). Ett fel i spellogiken stoppar bara det rummets runda, inte hela servern.
 - **Snygg avstängning:** vid `SIGTERM` får alla spelare beskedet att servern startas om innan anslutningarna stängs, och `/health` svarar 503.
 
 ## Profil och inställningar
@@ -110,4 +111,4 @@ Spelaren väljer namn och färg, och kan slå av ljud och vibration. Det sparas 
 - Klienten jämnar ut rörelser mellan uppdateringar men gissar inte framåt (ingen client-side prediction).
 - Klient och server på olika domäner: bygg klienten med `VITE_WS_URL=wss://server.example/ws`.
 
-Hosting: allt som kör en långlivad Node-process med WebSockets fungerar, t.ex. Fly.io, Render eller Railway (se [docs/nytt-spel.md](docs/nytt-spel.md#6-driftsätta)). Serverless-plattformar som Vercel passar inte för servern.
+Hosting: allt som kör en långlivad Node-process med WebSockets fungerar, t.ex. Fly.io, Render eller Railway (se [docs/driftsattning.md](docs/driftsattning.md)). Serverless-plattformar som Vercel passar inte för servern.

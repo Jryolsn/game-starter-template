@@ -13,6 +13,7 @@ import {
 } from "../shared/protocol.ts";
 import { generateRoomCode, normalizeRoomCode } from "../shared/roomCode.ts";
 import { LIMITS, WindowCounter } from "./limits.ts";
+import { errorFields, log } from "./log.ts";
 
 /** Det servern behöver från en anslutning. Gör rummen testbara utan riktiga sockets. */
 export interface Conn {
@@ -149,6 +150,7 @@ export class RoomManager {
       invite: randomBytes(12).toString("base64url"),
     };
     this.rooms.set(code, room);
+    log.info("room_created", { code, rooms: this.rooms.size });
     const player = this.addPlayer(room, conn, name, color);
     room.hostId = player.id;
     this.broadcastLobby(room);
@@ -227,7 +229,17 @@ export class RoomManager {
     const dt = 1 / TICK_HZ;
     room.loop = setInterval(() => {
       const state = room.state!;
-      game.tick(state, dt);
+      try {
+        game.tick(state, dt);
+      } catch (err) {
+        // En bugg i spellogiken ska bara stoppa det här rummets runda, inte hela servern.
+        log.error("tick_failed", { code: room.code, ...errorFields(err) });
+        clearInterval(room.loop);
+        room.phase = "finished";
+        this.broadcast(room, { t: "error", code: "internal", message: "Något gick fel i spelet. Rundan avbröts." });
+        this.broadcastLobby(room);
+        return;
+      }
       this.broadcast(room, { t: "state", state });
       if (state.over) {
         clearInterval(room.loop);
@@ -352,6 +364,7 @@ export class RoomManager {
     if (room.players.size === 0) {
       clearInterval(room.loop);
       this.rooms.delete(room.code);
+      log.info("room_closed", { code: room.code, rooms: this.rooms.size });
       return;
     }
     if (room.hostId === player.id) {
