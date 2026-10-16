@@ -20,7 +20,7 @@ pnpm build
 pnpm start          # PORT=8787 som standard
 ```
 
-`pnpm test` kör enhetstester och `pnpm lint` kör Biome (`pnpm format` rättar). `pnpm check:ai` stoppar AI-attribution (t.ex. Co-Authored-By-rader) i filer och commits. `pnpm install` aktiverar samma kontroll som commit-hook (`.githooks/`); kör `pnpm prepare` om den inte blev aktiv. `pnpm test:e2e` bygger klienten och spelar igenom rum, länk, återanslutning och solo med två simulerade telefoner (första gången: `pnpm exec playwright install chromium`).
+`pnpm test` kör enhetstester och `pnpm lint` kör Biome (`pnpm format` rättar). `pnpm tunnel` lägger ut spelet från din dator på en tillfällig gratis adress så att andra kan spela (kräver `cloudflared`, se [docs/driftsattning.md](docs/driftsattning.md)). `pnpm check:ai` stoppar AI-attribution (t.ex. Co-Authored-By-rader) i filer och commits. `pnpm install` aktiverar samma kontroll som commit-hook (`.githooks/`); kör `pnpm prepare` om den inte blev aktiv. `pnpm test:e2e` bygger klienten och spelar igenom rum, länk, återanslutning och solo med två simulerade telefoner (första gången: `pnpm exec playwright install chromium`).
 
 Solo-läget som en enda fristående HTML-fil (ingen server behövs, bra för att snabbt testa på mobilen eller publicera som artifact):
 
