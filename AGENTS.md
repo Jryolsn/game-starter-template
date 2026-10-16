@@ -10,6 +10,8 @@ Startpunkt för webbspel: spela solo eller med andra i samma rum via 4-teckensko
 - `server/validate.ts` och `server/limits.ts`: validering mot `ClientMsgSchema` och gränser mot missbruk.
 - `client/src/device.ts`: wake lock, vibration och ljud (iOS-upplåsning).
 
+- `docs/nar-spelet-vaxer.md`: rekommenderade bibliotek och mönster när ett spel behöver mer än templaten (grafik, UI, fysik, skala, konton). Utgå från den innan nya beroenden läggs till.
+
 Regler:
 - Lita aldrig på klienten: all inkommande data valideras med Valibot-scheman (`ClientMsgSchema`, `PlayerInputSchema`). Ändra schemat när meddelanden eller input ändras; typerna härleds från det.
 - Ingen `Math.random` i spellogiken; använd `rand(state)`.

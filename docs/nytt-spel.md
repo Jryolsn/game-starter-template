@@ -58,6 +58,10 @@ Använd hjälpfunktionerna i `client/src/device.ts`. Lägg ljudfiler i `client/p
 
 Höj `PROTOCOL_VERSION` i `shared/protocol.ts`. Spelare som har en gammal flik öppen vid driftsättningen får då sidan omladdad i stället för konstiga fel.
 
+## Behöver spelet mer?
+
+Grafikmotor, UI-ramverk, fysik, konton, flera servrar: se [När spelet växer](nar-spelet-vaxer.md).
+
 ## Vanliga justeringar
 
 | Vad | Var |

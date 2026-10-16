@@ -34,7 +34,7 @@ Docker (bygger klienten och kör servern på port 8080):
 docker build -t mitt-spel . && docker run -p 8080:8080 mitt-spel
 ```
 
-**Nytt spel?** Se [docs/nytt-spel.md](docs/nytt-spel.md).
+**Nytt spel?** Se [docs/nytt-spel.md](docs/nytt-spel.md). **Behöver spelet mer** (grafikmotor, UI-ramverk, fysik, konton, flera servrar)? Se [docs/nar-spelet-vaxer.md](docs/nar-spelet-vaxer.md).
 
 ## Hur det hänger ihop
 
