@@ -108,12 +108,22 @@ wss.on("connection", (ws, req) => {
   ws.on("pong", () => alive.add(ws));
   const conn: Conn = { send, ip };
   const limiter = new RateLimiter(LIMITS.msgPerSecond, LIMITS.msgBurst);
+  // Överskott räknas per tiosekundersfönster, så att enstaka toppar under en lång session
+  // inte till slut kopplar bort en vanlig spelare. Den som spammar oavbrutet kopplas bort.
   let dropped = 0;
+  let dropWindowStart = Date.now();
 
   ws.on("message", (data) => {
     if (!limiter.take()) {
-      // Enstaka överskott ignoreras; en klient som spammar kopplas bort.
-      if (++dropped > LIMITS.msgBurst * 2) ws.close(1008, "rate limited");
+      const now = Date.now();
+      if (now - dropWindowStart > 10_000) {
+        dropWindowStart = now;
+        dropped = 0;
+      }
+      if (++dropped > LIMITS.msgBurst * 2) {
+        log.warn("rate_limited", { ip });
+        ws.close(1008, "rate limited");
+      }
       return;
     }
     const msg = parseClientMsg(String(data));

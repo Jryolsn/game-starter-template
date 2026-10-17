@@ -30,7 +30,7 @@ Funktionerna som resten av startern anropar:
 
 ## 3. Ändra styrningen
 
-`PlayerInputSchema` i `game/logic.ts` är ett [Valibot](https://valibot.dev)-schema för det klienten skickar; typen `PlayerInput` härleds från det och servern avvisar allt som inte matchar. Ändra schemat, inte bara typen. Exemplet använder en riktning `{ x, y }` från joysticken. För knappar, tryck på skärmen eller sikte: ändra schemat och `GameView.updateInput()` i `game/view.ts`.
+`PlayerInputSchema` i `game/logic.ts` är ett [Valibot](https://valibot.dev)-schema för det klienten skickar; typen `PlayerInput` härleds från det och servern avvisar allt som inte matchar. Ändra schemat, inte bara typen. Exemplet använder en riktning `{ x, y }` från joysticken. För knappar, tryck på skärmen eller sikte: ändra schemat och `GameView.updateInput()` i `game/view.ts`. Styrningen skickas högst 20 gånger i sekunden och bara det senaste värdet följer med, så beskriv *läget* ("håller in hopp", riktning) i stället för enskilda händelser. Behöver spelet räkna tryck, skicka en räknare (t.ex. `jumps: 3`) som servern jämför med förra värdet.
 
 ## 4. Rita spelet
 

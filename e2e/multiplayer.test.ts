@@ -251,3 +251,28 @@ test("felrapporter valideras och begränsas", async () => {
   for (let i = 0; i < 12; i++) statuses.push(await post(JSON.stringify({ message: `fel ${i}` })));
   assert.ok(statuses.includes(429), "ingen gräns för felrapporter");
 });
+
+test("snabba tumrörelser kopplar inte bort spelaren", async () => {
+  const page = await phone();
+  let closed = 0;
+  page.on("websocket", (ws) => ws.on("close", () => closed++));
+  await page.goto(URL_);
+  await button(page, "Skapa rum").click();
+  await button(page, "Starta spelet").click();
+  await page.locator(".hud").waitFor();
+  // Som en tumme som rör sig i cirklar på en telefon med 120 Hz-skärm, i fyra sekunder.
+  // Skickas som text: tsx lägger annars till hjälpfunktioner som inte finns i sidan.
+  await page.evaluate(`(async () => {
+    const c = document.querySelector("canvas");
+    const at = (type, x, y) =>
+      c.dispatchEvent(new PointerEvent(type, { pointerId: 1, clientX: x, clientY: y, bubbles: true }));
+    at("pointerdown", 150, 300);
+    for (let i = 0; i < 480; i++) {
+      at("pointermove", 150 + Math.cos(i / 6) * 40, 300 + Math.sin(i / 6) * 40);
+      await new Promise((r) => setTimeout(r, 1000 / 120));
+    }
+    at("pointerup", 150, 300);
+  })()`);
+  await page.waitForTimeout(500);
+  assert.equal(closed, 0, "servern kopplade bort spelaren");
+});
