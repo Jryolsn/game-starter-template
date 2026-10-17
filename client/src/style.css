@@ -307,3 +307,21 @@ input.code {
   cursor: pointer;
   min-height: 56px;
 }
+
+/* Testa mikrofonen */
+.mic-test {
+  display: grid;
+  gap: 8px;
+}
+.mic-meter {
+  height: 56px;
+  background: var(--panel);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.mic-meter div {
+  height: 100%;
+  width: 0;
+  background: var(--accent-2);
+  transition: width 0.08s linear;
+}

@@ -5,7 +5,7 @@ import * as gameUi from "../../game/ui.ts";
 import { GameView } from "../../game/view.ts";
 import type { LobbyPlayer, PublicRoom, RoomPhase, RoomSettings, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, inviteFromUrl, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
-import { keepAwake, releaseAwake, stopMic, unlockAudio } from "./device.ts";
+import { keepAwake, micLevel, releaseAwake, startMic, stopMic, unlockAudio } from "./device.ts";
 import { reportErrors } from "./errors.ts";
 import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
 import { loadProfile, loadSettings, saveProfile, saveSettings } from "./profile.ts";
@@ -354,8 +354,12 @@ function showSettings(inRoom: boolean) {
   });
   const sound = toggle("Ljud", settings.sound);
   const vibration = toggle("Vibration", settings.vibration);
+  const mic = micTest();
 
-  const close = () => overlay.remove();
+  const close = () => {
+    mic.stop();
+    overlay.remove();
+  };
   const save = () => {
     saveProfile({ name: name.value, color });
     saveSettings({ sound: sound.input.checked, vibration: vibration.input.checked });
@@ -371,12 +375,47 @@ function showSettings(inRoom: boolean) {
       h("div", { className: "swatches" }, swatches),
       sound.row,
       vibration.row,
+      mic.row,
       button("Spara", "primary", save),
       button("Avbryt", "ghost", close),
     ]),
   ]);
   overlay.addEventListener("click", (e) => e.target === overlay && close());
   app.append(overlay);
+}
+
+/** "Testa mikrofonen": ger tillåtelse i förväg och visar en mätare för spel som styrs av ljud. */
+function micTest() {
+  const bar = h("div");
+  const meter = h("div", { className: "mic-meter", hidden: true }, [bar]);
+  const info = h("p", { hidden: true });
+  let frame = 0;
+  const stop = () => {
+    cancelAnimationFrame(frame);
+    stopMic();
+  };
+  const test = button("🎤 Testa mikrofonen", "", async () => {
+    info.hidden = false;
+    if (!window.isSecureContext) {
+      info.textContent = "Mikrofonen fungerar bara när sidan öppnas via https, t.ex. med pnpm tunnel.";
+      return;
+    }
+    info.textContent = "Startar…";
+    if (!(await startMic())) {
+      info.textContent = "Mikrofonen gick inte att starta. Tillåt mikrofonen för sidan i webbläsarens inställningar.";
+      return;
+    }
+    test.hidden = true;
+    meter.hidden = false;
+    info.textContent = "Prata eller blås. Stapeln visar ljudnivån som spelet får.";
+    const draw = () => {
+      if (!meter.isConnected) return stop();
+      bar.style.width = `${Math.round(micLevel() * 100)}%`;
+      frame = requestAnimationFrame(draw);
+    };
+    draw();
+  });
+  return { row: h("div", { className: "mic-test" }, [test, meter, info]), stop };
 }
 
 function toggle(label: string, checked: boolean) {
