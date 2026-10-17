@@ -1,5 +1,5 @@
 // Hjälpfunktioner för mobilkänsla. Alla är säkra att anropa även där stödet saknas,
-// och ljud och vibration följer spelarens inställningar (profile.ts).
+// och ljud och vibration följer spelarens inställningar (profile.ts). Mikrofonen styrs av webbläsarens tillåtelse.
 import { loadSettings } from "./profile.ts";
 
 // ---- Håll skärmen tänd under en runda ----
@@ -82,4 +82,58 @@ export async function playSound(url: string, volume = 1): Promise<void> {
     src.connect(gain).connect(ctx.destination);
     src.start();
   } catch {}
+}
+
+// ---- Mikrofon: ljudnivå som styrning ----
+// Bara nivån (ett tal) används; själva ljudet lämnar aldrig telefonen.
+let mic: { stream: MediaStream; analyser: AnalyserNode; data: Float32Array<ArrayBuffer> } | null = null;
+let micStarting: Promise<boolean> | null = null;
+
+/**
+ * Starta mikrofonen. Anropa från en tryckning: webbläsaren frågar om lov första gången,
+ * och iOS kräver en tryckning. Ger false om spelaren nekar, sidan inte är https eller stöd saknas.
+ */
+export function startMic(): Promise<boolean> {
+  if (mic?.stream.getAudioTracks()[0]?.readyState === "live") return Promise.resolve(true);
+  micStarting ??= openMic().finally(() => (micStarting = null));
+  return micStarting;
+}
+
+async function openMic(): Promise<boolean> {
+  stopMic();
+  unlockAudio();
+  if (!audio || !navigator.mediaDevices?.getUserMedia) return false;
+  try {
+    // Utan brusreducering och automatisk förstärkning, annars jämnas ljudnivån ut.
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+    const analyser = audio.createAnalyser();
+    analyser.fftSize = 1024;
+    audio.createMediaStreamSource(stream).connect(analyser); // inte till högtalaren
+    mic = { stream, analyser, data: new Float32Array(analyser.fftSize) };
+    return true;
+  } catch {
+    return false; // nekad, ingen mikrofon, eller sidan är inte https
+  }
+}
+
+/**
+ * Hur högt det låter just nu, 0 (tyst) till 1 (mycket högt). 0 om mikrofonen inte är igång.
+ * Läs den t.ex. varje bildruta och skicka den, avrundad, som en del av spelarens input.
+ */
+export function micLevel(): number {
+  if (!mic) return 0;
+  mic.analyser.getFloatTimeDomainData(mic.data);
+  let sum = 0;
+  for (const s of mic.data) sum += s * s;
+  const db = 10 * Math.log10(sum / mic.data.length + 1e-12);
+  return Math.min(1, Math.max(0, (db + 60) / 60)); // -60 dB → 0, 0 dB → 1
+}
+
+/** Stäng av mikrofonen, så att telefonens inspelningsindikator släcks. */
+export function stopMic(): void {
+  for (const t of mic?.stream.getTracks() ?? []) t.stop();
+  mic?.analyser.disconnect();
+  mic = null;
 }

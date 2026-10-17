@@ -55,6 +55,20 @@ Kör bara **en** instans och låt den inte somna. Rummen ligger i processens min
 
 Använd hjälpfunktionerna i `client/src/device.ts`. Lägg ljudfiler i `client/public/sounds/` och spela dem med `playSound("/sounds/poang.mp3")`. Feedbacken i exemplet sitter i `feedback()` i `game/ui.ts`.
 
+## Mikrofon: ljudnivå som styrning
+
+För spel där ljudet styr (blås för att flyga, skrik för att ladda, klappa i takt). Bara ljudnivån används, ett tal mellan 0 och 1; själva ljudet skickas aldrig någonstans.
+
+1. **Lägg nivån i styrningen.** Lägg till fältet i `PlayerInputSchema` i `game/logic.ts`, t.ex. `loud: v.pipe(v.number(), v.finite(), v.minValue(0), v.maxValue(1))`, och använd det i `applyInput`/`tick`.
+2. **Starta mikrofonen från en tryckning** i `game/view.ts`, t.ex. i `pointerdown` eller från en knapp "Slå på mikrofonen": `startMic()` ger `true` när den är igång. Webbläsaren frågar spelaren om lov första gången, och iOS kräver att det sker från en tryckning. Ger den `false` (nekad, ingen mikrofon) bör spelet gå att spela ändå, eller säga vad som saknas.
+3. **Läs nivån varje bildruta** med `micLevel()` i `draw()`, avrunda (t.ex. till tiondelar) och skicka den med `sendInput` bara när den ändrats. Servern släpper igenom 30 meddelanden per sekund och spelare (`LIMIT_MSG_PER_SECOND`), så skicka inte varje bildruta.
+
+Mikrofonen stängs av automatiskt när rundan är slut (`stopMic()` i `teardownGame()`), så telefonens inspelningsindikator släcks.
+
+**Mikrofonen kräver https.** Webbläsaren ger bara sidor på `https://` eller `localhost` tillgång till mikrofonen. Med `pnpm dev` fungerar det på datorn (`localhost`) men inte från mobilen via wifi-adressen (`http://192.168…`). Testa på mobilen med `pnpm tunnel`, som ger en https-adress, eller på den driftsatta servern.
+
+Nivån är rå: 0 är tyst, ungefär 0,5 är normalt prat nära telefonen och 1 är mycket högt. Olika telefoner ger olika värden, så låt spelet jämna ut den (t.ex. ett glidande medel) och välj trösklar med lite marginal.
+
 ## Ändrar du protokollet?
 
 Höj `PROTOCOL_VERSION` i `shared/protocol.ts`. Spelare som har en gammal flik öppen vid driftsättningen får då sidan omladdad i stället för konstiga fel.

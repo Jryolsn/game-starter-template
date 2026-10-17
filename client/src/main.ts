@@ -5,7 +5,7 @@ import * as gameUi from "../../game/ui.ts";
 import { GameView } from "../../game/view.ts";
 import type { LobbyPlayer, PublicRoom, RoomPhase, RoomSettings, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, inviteFromUrl, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
-import { keepAwake, releaseAwake, unlockAudio } from "./device.ts";
+import { keepAwake, releaseAwake, stopMic, unlockAudio } from "./device.ts";
 import { reportErrors } from "./errors.ts";
 import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
 import { loadProfile, loadSettings, saveProfile, saveSettings } from "./profile.ts";
@@ -542,6 +542,7 @@ function onState(state: GameState) {
 // ---- Hjälpfunktioner ----
 function teardownGame() {
   releaseAwake();
+  stopMic();
   view?.destroy();
   view = null;
   hud = null;

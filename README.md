@@ -104,6 +104,8 @@ Spelaren väljer namn och färg, och kan slå av ljud och vibration. Det sparas 
 
 `client/src/device.ts` har `keepAwake()` (skärmen slocknar inte under en runda), `vibrate()`, och ljud som fungerar på iOS: `unlockAudio()` anropas automatiskt vid knapptryck, sedan `playTone()` eller `playSound(url)`. Exempelspelet vibrerar och piper när du tar en prick.
 
+**Mikrofon:** spel som styrs av ljud (blåsa, skrika, klappa) kan läsa hur högt det låter med `startMic()` och `micLevel()` (0–1). Bara nivån används; själva ljudet lämnar aldrig telefonen. Kräver https, se [docs/nytt-spel.md](docs/nytt-spel.md#mikrofon-ljudnivå-som-styrning).
+
 ## Saker som medvetet är enkla
 
 - Rummen ligger i minnet, så en omstart av servern tömmer dem. Med flera serverinstanser behövs delat state (t.ex. Redis) eller "sticky" routing per rumskod.
