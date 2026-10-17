@@ -75,6 +75,18 @@ Nivån är rå: 0 är tyst, ungefär 0,5 är normalt prat nära telefonen och 1 
 
 Höj `PROTOCOL_VERSION` i `shared/protocol.ts`. Spelare som har en gammal flik öppen vid driftsättningen får då sidan omladdad i stället för konstiga fel.
 
+## Kamera
+
+För spel där kameran styr (vifta med handen, le, visa en färg) eller där spelaren tar en bild. Bilden stannar i telefonen; spelet skickar bara resultatet som input, precis som med mikrofonen.
+
+1. **Lägg resultatet i styrningen**, t.ex. `hand: v.boolean()` eller en position i `PlayerInputSchema` i `game/logic.ts`. Skicka aldrig själva bilden via spelservern.
+2. **Starta kameran från en tryckning** i `game/view.ts`: `const video = await startCamera("user")` ger en `<video>` (eller `null` om spelaren nekar eller kamera saknas). `"user"` är framkameran, `"environment"` den bakre.
+3. **Använd bilden:** visa den, rita den på canvasen med `ctx.drawImage(video, …)`, eller analysera den varje bildruta. För händer, ansikten och kroppar: se [När spelet växer](nar-spelet-vaxer.md#kamera-och-video).
+
+Kameran stängs av när rundan är slut (`stopCamera()` i `teardownGame()`). Under **Profil och inställningar** finns **Testa kameran**, så att spelaren kan ge tillåtelse och se bilden i förväg. Precis som mikrofonen kräver kameran https: testa på mobilen med `pnpm tunnel`.
+
+Framkameran visas som en spegel i testet (`transform: scaleX(-1)`), vilket känns naturligt. Analyserar spelet bilden, kom ihåg att vänster och höger då är spegelvända mot det spelaren ser.
+
 ## Behöver spelet mer?
 
 Grafikmotor, UI-ramverk, fysik, konton, flera servrar: se [När spelet växer](nar-spelet-vaxer.md).
