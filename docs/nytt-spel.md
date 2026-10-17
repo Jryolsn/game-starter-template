@@ -89,4 +89,7 @@ Grafikmotor, UI-ramverk, fysik, konton, flera servrar: se [När spelet växer](n
 | Färger och utseende | `client/src/style.css`, `PLAYER_COLORS` i `game/logic.ts` (behåll minst lika många färger som `MAX_PLAYERS`) |
 | Fler spelarinställningar (t.ex. avatar, lag) | Lägg till fältet i `profile`-schemat i `shared/protocol.ts`, hantera det i `RoomManager.profile()` och visa det i `showSettings()` i `main.ts` |
 | Rumsfunktioner (publikt, lösenord, lås, ta bort spelare) | `settings`- och `kick`-meddelandena i `shared/protocol.ts`, `RoomManager.settings()`/`kick()` i `server/rooms.ts`, `showRoomSettings()` i `main.ts`. Behövs de inte i ett spel: ta bort knappen "Rumsinställningar" i `showLobby()`. |
+| Chattens snabbfraser | `QUICK_PHRASES` i `client/src/chat.ts` |
+| Chattens längd och takt | `CHAT_MAX_LENGTH` i `shared/protocol.ts`, `CHAT_HISTORY` i `server/rooms.ts`, miljövariablerna `LIMIT_CHAT_BURST` och `LIMIT_CHAT_PER_SECOND` |
+| Ingen chatt i spelet | Ta bort `chat.button(...)` i `showLobby()`, `showGame()` och `showResults()` i `main.ts` |
 | Spelets namn | `<title>` i `client/index.html`, `client/public/manifest.webmanifest` |

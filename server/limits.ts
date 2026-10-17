@@ -61,6 +61,9 @@ export const LIMITS = {
   /** Meddelanden per sekund och anslutning (input skickas bara vid ändring, så 30 räcker gott). */
   msgPerSecond: num("LIMIT_MSG_PER_SECOND", 30),
   msgBurst: num("LIMIT_MSG_BURST", 60),
+  /** Chattmeddelanden: så många i rad, sedan ett nytt per `1 / chatPerSecond` sekunder. */
+  chatBurst: num("LIMIT_CHAT_BURST", 5),
+  chatPerSecond: num("LIMIT_CHAT_PER_SECOND", 0.5),
   /** Rum som en IP-adress får skapa per minut. */
   roomsPerMinute: num("LIMIT_ROOMS_PER_MINUTE", 10),
   /** Felaktiga rumskoder per IP och minut innan fler försök stoppas. */

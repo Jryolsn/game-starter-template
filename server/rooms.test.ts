@@ -266,3 +266,42 @@ test("värden kan ta bort en spelare, andra kan inte", () => {
   rooms.handle(a2.conn, { t: "join", code, name: "A", resume: a.last("joined").resume });
   assert.equal(a2.last("error").code, "locked");
 });
+
+test("chatt går till alla i rummet, rensas och sparas för den som går med senare", () => {
+  rooms = new RoomManager();
+  const a = client();
+  const b = client();
+  const c = client();
+  cleanup.push(a.conn, b.conn, c.conn);
+  rooms.handle(a.conn, { t: "create", name: "Anna" });
+  const code = a.last("joined").code;
+  rooms.handle(b.conn, { t: "join", code, name: "Bo" });
+  rooms.handle(a.conn, { t: "chat", text: "  hej‮  på\ndig 👨‍👩‍👧 " });
+  rooms.handle(a.conn, { t: "chat", text: " \n " }); // tomt skickas inte
+  const got = b.last("chat").messages;
+  assert.equal(got.length, 1);
+  assert.equal(got[0].text, "hej på dig 👨‍👩‍👧");
+  assert.equal(got[0].name, "Anna");
+  assert.equal(got[0].from, a.last("joined").you);
+  assert.deepEqual(a.last("chat").messages, got);
+
+  rooms.handle(c.conn, { t: "join", code, name: "Cia" });
+  assert.deepEqual(c.last("chat"), { t: "chat", messages: got, history: true });
+});
+
+test("chatt begränsas per spelare", () => {
+  rooms = new RoomManager();
+  const a = client();
+  cleanup.push(a.conn);
+  rooms.handle(a.conn, { t: "create", name: "A" });
+  for (let i = 0; i < 6; i++) rooms.handle(a.conn, { t: "chat", text: `nr ${i}` });
+  assert.equal(a.inbox.filter((m) => m.t === "chat").length, 5);
+  assert.equal(a.last("error").code, "rate_limited");
+});
+
+test("chatt utan rum ignoreras", () => {
+  rooms = new RoomManager();
+  const a = client();
+  rooms.handle(a.conn, { t: "chat", text: "hallå?" });
+  assert.equal(a.inbox.length, 0);
+});

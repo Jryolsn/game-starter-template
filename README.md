@@ -98,6 +98,10 @@ Servern och solo-läget använder samma logik, så de följer med automatiskt.
 
 Spelaren väljer namn och färg, och kan slå av ljud och vibration. Det sparas på enheten (`client/src/profile.ts`). I lobbyn trycker man på sig själv för att byta namn eller färg; upptagna färger går inte att välja, och ändringen syns direkt för alla (`{ t: "profile" }`). Mitt i en runda går det inte att ändra.
 
+## Chatt
+
+I lobbyn, under spelet och på resultatskärmen finns en chatt (💬). Man kan skriva eller trycka på en snabbfras ("Bra!", "Vänta"), vilket är lättare mitt i en runda. Meddelanden som kommer medan chatten är stängd visas en stund som pratbubblor överst, och knappen visar hur många som är olästa. Servern rensar texten, begränsar hur ofta man kan skriva och sparar de 30 senaste, så att den som går med eller återansluter ser vad som sagts. Värden kan ta bort den som stör.
+
 ## Mobilkänsla
 
 **QR-kod:** i lobbyn visar knappen QR-kod rummets länk som en stor QR-kod ([uqr](https://github.com/unjs/uqr)), så att de som sitter bredvid kan scanna värdens skärm.

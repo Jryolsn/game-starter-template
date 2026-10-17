@@ -65,6 +65,7 @@ Templaten har inga konton: den som har koden kommer in.
 
 - **Inloggning, topplistor, profiler:** en separat webbplats eller ett API bredvid spelservern, t.ex. Next.js eller [Supabase](https://supabase.com) (auth + databas). Spelservern kan verifiera en token i `join`-meddelandet.
 - **Sparade framsteg utan konto:** `localStorage` på klienten räcker ofta.
+- **Chatt med okända:** textchatten finns, men med publika rum och främlingar behövs mer: ett ordfilter på servern (i `RoomManager.chat()`), att kunna tysta en spelare för sig själv, och att anmäla. Barn som målgrupp: överväg bara snabbfraser.
 - **Fler värdfunktioner** (t.ex. byta värd, tysta chatt): lägg till meddelanden i `ClientMsgSchema` och kontrollera att avsändaren är värd i `server/rooms.ts`, på samma sätt som `kick` och `settings`.
 
 ## Övervakning
