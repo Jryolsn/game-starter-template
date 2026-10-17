@@ -67,7 +67,7 @@ Under **Profil och inställningar** finns knappen **Testa mikrofonen**. Den ber 
 
 Mikrofonen stängs av automatiskt när rundan är slut (`stopMic()` i `teardownGame()`), så telefonens inspelningsindikator släcks.
 
-**Mikrofonen kräver https.** Webbläsaren ger bara sidor på `https://` eller `localhost` tillgång till mikrofonen. Med `pnpm dev` fungerar det på datorn (`localhost`) men inte från mobilen via wifi-adressen (`http://192.168…`). Testa på mobilen med `pnpm tunnel`, som ger en https-adress, eller på den driftsatta servern.
+**Mikrofonen kräver https.** Webbläsaren ger bara sidor på `https://` eller `localhost` tillgång till mikrofonen. Med `pnpm dev` fungerar det på datorn (`localhost`) men inte från mobilen via wifi-adressen (`http://192.168…`). Testa på mobilen med `pnpm tunnel:dev` (eller `pnpm tunnel`), som ger en https-adress, eller på den driftsatta servern.
 
 Nivån är rå: 0 är tyst, ungefär 0,5 är normalt prat nära telefonen och 1 är mycket högt. Olika telefoner ger olika värden, så låt spelet jämna ut den (t.ex. ett glidande medel) och välj trösklar med lite marginal.
 
@@ -83,7 +83,7 @@ För spel där kameran styr (vifta med handen, le, visa en färg) eller där spe
 2. **Starta kameran från en tryckning** i `game/view.ts`: `const video = await startCamera("user")` ger en `<video>` (eller `null` om spelaren nekar eller kamera saknas). `"user"` är framkameran, `"environment"` den bakre.
 3. **Använd bilden:** visa den, rita den på canvasen med `ctx.drawImage(video, …)`, eller analysera den varje bildruta. För händer, ansikten och kroppar: se [När spelet växer](nar-spelet-vaxer.md#kamera-och-video).
 
-Kameran stängs av när rundan är slut (`stopCamera()` i `teardownGame()`). Under **Profil och inställningar** finns **Testa kameran**, så att spelaren kan ge tillåtelse och se bilden i förväg. Precis som mikrofonen kräver kameran https: testa på mobilen med `pnpm tunnel`.
+Kameran stängs av när rundan är slut (`stopCamera()` i `teardownGame()`). Under **Profil och inställningar** finns **Testa kameran**, så att spelaren kan ge tillåtelse och se bilden i förväg. Precis som mikrofonen kräver kameran https: testa på mobilen med `pnpm tunnel:dev`.
 
 Framkameran visas som en spegel i testet (`transform: scaleX(-1)`), vilket känns naturligt. Analyserar spelet bilden, kom ihåg att vänster och höger då är spegelvända mot det spelaren ser.
 

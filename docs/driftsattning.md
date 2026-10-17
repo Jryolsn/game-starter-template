@@ -34,6 +34,8 @@ pnpm tunnel
 
 Kommandot bygger spelet, startar servern och tunneln och skriver ut en adress som `https://något-slumpat.trycloudflare.com` och en QR-kod i terminalen. Dela adressen, eller skapa ett rum och visa rummets QR-kod. Ctrl+C stänger allt. Adressen byts varje gång tunneln startas.
 
+**Medan du utvecklar:** kör `pnpm tunnel:dev` i stället. Då behålls samma adress så länge kommandot är igång, och ändringar i koden (egna eller efter `git pull`) kommer med av sig själva: sidan i telefonen laddas om när klientkoden ändras, och servern startar om när serverkoden ändras (pågående rum försvinner då). Det är Vites utvecklingsserver som syns utåt, så den är långsammare första gången och inte till för riktiga spelkvällar; använd `pnpm tunnel` för dem. Har du ändrat beroenden (`package.json`) efter `git pull`: kör `pnpm install` och starta om.
+
 ### Render, gratisnivån
 
 Som stegen för Render nedan, men välj **Free** som instans. Bra för att ha en demo uppe utan kostnad. Den som kommer först efter en paus väntar ungefär en minut, och pågående rum försvinner när tjänsten somnar.
