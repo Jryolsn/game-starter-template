@@ -19,12 +19,16 @@ Funktionerna som resten av startern anropar:
 
 | Funktion | Anropas när |
 | --- | --- |
-| `createGame(players, seed?)` | Värden trycker på Starta / Spela igen |
+| `createGame(players, seed?, settings?)` | Värden trycker på Starta / Spela igen. `settings` är värdens val bland `SETTINGS`. |
 | `addPlayer(state, player)` | Någon går med mitt i en runda |
 | `removePlayer(state, id)` | Någon lämnar (eller varit borta i 30 s) |
 | `applyInput(state, id, input)` | En spelare skickar styrning. Formen är redan kontrollerad mot `PlayerInputSchema`; kontrollera spelregler här (t.ex. att det är din tur). |
 | `tick(state, dt)` | 20 gånger/s. Sätt `state.over = true` när rundan är slut. |
 | `ranking(state)` | Resultatskärmen |
+| `SETTINGS` (valfri) | Inställningar som värden väljer i lobbyn, t.ex. `{ key: "seconds", label: "Rundans längd", options: [30, 60, 90], default: 60, unit: "s" }`. Servern släpper bara igenom värdena i `options`. |
+| `viewFor(state, id)` (valfri) | Innan tillståndet skickas till en spelare. Returnera en kopia utan det spelaren inte får veta (gömda spelare, andras kort). Utan den ser alla allt. |
+
+Tester för spellogiken kan läggas i `game/*.test.ts`; `pnpm test` kör dem.
 
 `GameState` måste ha `players: Record<id, { name, color, score }>`, `timeLeft` och `over`, eftersom HUD och resultatskärm läser dem. Allt annat är ditt.
 

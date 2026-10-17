@@ -1,6 +1,7 @@
 // Meddelanden mellan klient och server. Allt är JSON över en WebSocket.
 // Klientens meddelanden beskrivs som Valibot-scheman: de ger både TypeScript-typerna och valideringen på servern.
 import * as v from "valibot";
+import * as game from "../game/logic.ts";
 import { type GameState, PLAYER_COLORS, PlayerInputSchema } from "../game/logic.ts";
 
 export interface LobbyPlayer {
@@ -20,7 +21,40 @@ export interface RoomSettings {
   hasPassword: boolean;
   /** Låst: inga nya spelare, men de som redan är med kan återansluta. */
   locked: boolean;
+  /** Spelets inställningar som värden valt (se GAME_SETTINGS). */
+  game: GameSettings;
 }
+
+/**
+ * En inställning som värden väljer i lobbyn, t.ex. rundans längd. Spelet exporterar sina som
+ * `SETTINGS` i game/logic.ts; utan den finns inga spelinställningar.
+ */
+export interface GameSetting {
+  key: string;
+  label: string;
+  options: readonly number[];
+  default: number;
+  /** Visas efter värdet, t.ex. "s". */
+  unit?: string;
+}
+export type GameSettings = Record<string, number>;
+export const GAME_SETTINGS: readonly GameSetting[] = (game as { SETTINGS?: readonly GameSetting[] }).SETTINGS ?? [];
+
+export function defaultGameSettings(): GameSettings {
+  return Object.fromEntries(GAME_SETTINGS.map((s) => [s.key, s.default]));
+}
+
+/** Bara värden som spelet erbjuder släpps igenom. */
+const GameSettingsSchema = v.object(
+  Object.fromEntries(GAME_SETTINGS.map((s) => [s.key, v.optional(v.picklist(s.options as number[]))])),
+);
+
+/** Startar en runda med värdens inställningar. Spel som inte har några inställningar ignorerar dem. */
+export const startGame: (
+  players: { id: string; name: string; color: string }[],
+  seed: number | undefined,
+  settings: GameSettings,
+) => GameState = game.createGame;
 
 /** Ett publikt rum i listan "Hitta rum". */
 export interface PublicRoom {
@@ -59,12 +93,13 @@ export const ClientMsgSchema = v.variant("t", [
     /** Inbjudningsnyckeln från länken eller QR-koden. Släpper in utan lösenord. */
     invite: v.optional(InviteSchema),
   }),
-  // Värden ändrar rummets inställningar. Tom sträng eller null tar bort lösenordet.
+  // Värden ändrar rummets inställningar. Tom sträng eller null tar bort lösenordet. game: spelets inställningar.
   v.object({
     t: v.literal("settings"),
     visibility: v.optional(v.picklist(["private", "public"])),
     password: v.optional(v.nullable(PasswordSchema)),
     locked: v.optional(v.boolean()),
+    game: v.optional(GameSettingsSchema),
   }),
   // Värden tar bort en spelare ur rummet.
   v.object({ t: v.literal("kick"), playerId: v.pipe(v.string(), v.maxLength(64)) }),
@@ -111,6 +146,15 @@ export interface ChatMessage {
   text: string;
 }
 
+/**
+ * Det en spelare får se av tillståndet. Exporterar spelet `viewFor(state, playerId)` används den,
+ * så att spelet kan dölja sådant spelaren inte ska veta (gömda spelare, andras kort). Annars ser alla allt.
+ */
+export function stateFor(state: GameState, playerId: string): GameState {
+  const viewFor = (game as { viewFor?: (state: GameState, playerId: string) => GameState }).viewFor;
+  return viewFor ? viewFor(state, playerId) : state;
+}
+
 /** Hemlighet som låter en spelare återansluta till sin plats (t.ex. efter att mobilen låst skärmen). */
 export type Resume = v.InferOutput<typeof ResumeSchema>;
 
@@ -139,4 +183,4 @@ export const WS_PATH = "/ws";
  * Höj när meddelandeformatet ändras på ett sätt som inte är bakåtkompatibelt.
  * Klienter med annan version blir ombedda att ladda om sidan efter en driftsättning.
  */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;

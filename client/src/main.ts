@@ -3,7 +3,14 @@ import { renderSVG } from "uqr";
 import { type GameState, PLAYER_COLORS, type PlayerColor } from "../../game/logic.ts";
 import * as gameUi from "../../game/ui.ts";
 import { GameView } from "../../game/view.ts";
-import type { LobbyPlayer, PublicRoom, RoomPhase, RoomSettings, ServerMsg } from "../../shared/protocol.ts";
+import {
+  GAME_SETTINGS,
+  type LobbyPlayer,
+  type PublicRoom,
+  type RoomPhase,
+  type RoomSettings,
+  type ServerMsg,
+} from "../../shared/protocol.ts";
 import { CODE_LENGTH, inviteFromUrl, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
 import { Chat } from "./chat.ts";
 import {
@@ -40,7 +47,7 @@ let hud: HTMLElement | null = null;
 let lastState: GameState | null = null;
 /** Inbjudningsnyckeln till rummet vi är i (följer med i delad länk och QR-kod). */
 let invite = "";
-let roomSettings: RoomSettings = { visibility: "private", hasPassword: false, locked: false };
+let roomSettings: RoomSettings = { visibility: "private", hasPassword: false, locked: false, game: {} };
 /** Senaste försöket att gå med, så att vi kan fråga efter lösenord och försöka igen. */
 let pendingJoin: { code: string; name: string } | null = null;
 /** Visas listan "Hitta rum" just nu? Då ritas den om när svaret kommer. */
@@ -203,6 +210,7 @@ function showLobby() {
         ...(roomSettings.locked ? [h("span", { textContent: "⛔ Låst" })] : []),
         ...(isHost ? [button("Rumsinställningar", "ghost", showRoomSettings)] : []),
       ]),
+      ...gameSettings(isHost),
       h("p", { textContent: `Spelare (${players.length})` }),
       h(
         "ul",
@@ -237,6 +245,25 @@ function showLobby() {
     ]),
     true,
   );
+}
+
+/** Spelets inställningar i lobbyn: värden väljer med knappar, de andra ser vad som gäller. */
+function gameSettings(isHost: boolean): HTMLElement[] {
+  return GAME_SETTINGS.map((s) => {
+    const current = roomSettings.game[s.key] ?? s.default;
+    const label = (n: number) => `${n}${s.unit ? `\u00a0${s.unit}` : ""}`;
+    if (!isHost) return h("p", { textContent: `${s.label}: ${label(current)}` });
+    return h("div", { className: "setting" }, [
+      h("p", { textContent: s.label }),
+      h(
+        "div",
+        { className: "row" },
+        s.options.map((n) =>
+          button(label(n), n === current ? "primary" : "", () => conn?.send({ t: "settings", game: { [s.key]: n } })),
+        ),
+      ),
+    ]);
+  });
 }
 
 /** Värdens inställningar: publikt/privat, lösenord och lås. */
