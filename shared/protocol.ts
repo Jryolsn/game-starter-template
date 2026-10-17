@@ -183,4 +183,4 @@ export const WS_PATH = "/ws";
  * Höj när meddelandeformatet ändras på ett sätt som inte är bakåtkompatibelt.
  * Klienter med annan version blir ombedda att ladda om sidan efter en driftsättning.
  */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
