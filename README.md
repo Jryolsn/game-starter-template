@@ -108,7 +108,7 @@ I lobbyn, under spelet och på resultatskärmen finns en chatt (💬). Man kan s
 
 `client/src/device.ts` har `keepAwake()` (skärmen slocknar inte under en runda), `vibrate()`, och ljud som fungerar på iOS: `unlockAudio()` anropas automatiskt vid knapptryck, sedan `playTone()` eller `playSound(url)`. Exempelspelet vibrerar och piper när du tar en prick.
 
-**Mikrofon:** spel som styrs av ljud (blåsa, skrika, klappa) kan läsa hur högt det låter med `startMic()` och `micLevel()` (0–1). Bara nivån används; själva ljudet lämnar aldrig telefonen. Kräver https, se [docs/nytt-spel.md](docs/nytt-spel.md#mikrofon-ljudnivå-som-styrning).
+**Mikrofon:** spel som styrs av ljud (blåsa, skrika, klappa) kan läsa hur högt det låter med `startMic()` och `micLevel()` (0–1). Bara nivån används; själva ljudet lämnar aldrig telefonen. Under Profil och inställningar finns **Testa mikrofonen** med en mätare. Kräver https, se [docs/nytt-spel.md](docs/nytt-spel.md#mikrofon-ljudnivå-som-styrning).
 
 ## Saker som medvetet är enkla
 
