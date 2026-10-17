@@ -30,12 +30,20 @@ export class OnlineConnection implements Connection {
   private retry = 0;
   /** Senaste rummet vi var med i, för att automatiskt återansluta. */
   private room?: { code: string; name: string; color?: game.PlayerColor; invite?: string; password?: string };
+  /** Styrning skickas högst en gång per servertick; senaste värdet vinner. */
+  private pendingInput?: ClientMsg;
+  private inputTimer?: ReturnType<typeof setTimeout>;
+  private lastInputAt = 0;
 
   constructor(private url = defaultWsUrl()) {
     this.connect();
   }
 
   send(msg: ClientMsg): void {
+    if (msg.t === "input") {
+      this.sendInput(msg);
+      return;
+    }
     if (msg.t === "join") {
       this.room = { code: msg.code, name: msg.name, color: msg.color, invite: msg.invite, password: msg.password };
       msg = { ...msg, resume: msg.resume ?? loadResume(msg.code) };
@@ -51,7 +59,7 @@ export class OnlineConnection implements Connection {
       } catch {}
     }
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
-    else if (msg.t !== "input") this.queue.push(msg);
+    else this.queue.push(msg);
   }
 
   onMessage(cb: (msg: ServerMsg) => void): void {
@@ -62,7 +70,26 @@ export class OnlineConnection implements Connection {
     this.statusListeners.push(cb);
   }
 
+  /**
+   * En tumme på en 120 Hz-skärm ger över 100 rörelser i sekunden, men servern läser styrningen
+   * bara 20 gånger i sekunden (TICK_HZ). Skicka därför högst en gång per tick, med det senaste
+   * värdet. Styrning är ett tillstånd ("åt det här hållet"), inte händelser som kan gå förlorade.
+   */
+  private sendInput(msg: ClientMsg): void {
+    this.pendingInput = msg;
+    if (this.inputTimer) return;
+    const wait = Math.max(0, this.lastInputAt + 1000 / TICK_HZ - Date.now());
+    this.inputTimer = setTimeout(() => {
+      this.inputTimer = undefined;
+      this.lastInputAt = Date.now();
+      const next = this.pendingInput;
+      this.pendingInput = undefined;
+      if (next && this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(next));
+    }, wait);
+  }
+
   close(): void {
+    clearTimeout(this.inputTimer);
     this.closed = true;
     this.ws?.close();
   }
