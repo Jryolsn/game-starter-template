@@ -2,6 +2,8 @@
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import * as game from "../game/logic.ts";
 import {
+  CHAT_MAX_LENGTH,
+  type ChatMessage,
   type ClientMsg,
   type ErrorCode,
   MAX_PLAYERS,
@@ -12,7 +14,7 @@ import {
   type Visibility,
 } from "../shared/protocol.ts";
 import { generateRoomCode, normalizeRoomCode } from "../shared/roomCode.ts";
-import { LIMITS, WindowCounter } from "./limits.ts";
+import { LIMITS, RateLimiter, WindowCounter } from "./limits.ts";
 import { errorFields, log } from "./log.ts";
 
 /** Det servern behöver från en anslutning. Gör rummen testbara utan riktiga sockets. */
@@ -29,6 +31,7 @@ interface Player {
   secret: string;
   conn: Conn | null;
   dropTimer?: NodeJS.Timeout;
+  chatLimit: RateLimiter;
 }
 
 interface Room {
@@ -44,7 +47,13 @@ interface Room {
   locked: boolean;
   /** Hemlig nyckel i länken och QR-koden. Den som har den slipper lösenordet. */
   invite: string;
+  /** De senaste chattmeddelandena, för den som går med eller återansluter. */
+  chat: ChatMessage[];
+  nextChatId: number;
 }
+
+/** Hur många chattmeddelanden rummet sparar. */
+const CHAT_HISTORY = 30;
 
 /** Max antal rum som skickas i listan "Hitta rum". */
 const PUBLIC_LIST_LIMIT = 50;
@@ -97,6 +106,9 @@ export class RoomManager {
         if (at?.room.state) game.applyInput(at.room.state, at.player.id, msg.input);
         break;
       }
+      case "chat":
+        this.chat(conn, msg.text);
+        break;
       case "leave":
         this.leave(conn);
         break;
@@ -148,6 +160,8 @@ export class RoomManager {
       password: null,
       locked: false,
       invite: randomBytes(12).toString("base64url"),
+      chat: [],
+      nextChatId: 1,
     };
     this.rooms.set(code, room);
     log.info("room_created", { code, rooms: this.rooms.size });
@@ -183,6 +197,7 @@ export class RoomManager {
       this.where.set(conn, { room, player: old });
       this.sendJoined(room, old);
       this.broadcastLobby(room);
+      this.sendChatHistory(room, conn);
       if (room.state) conn.send({ t: "state", state: room.state });
       return;
     }
@@ -212,6 +227,7 @@ export class RoomManager {
     // Sena spelare hoppar in direkt i en pågående runda.
     if (room.state && room.phase === "playing") game.addPlayer(room.state, player);
     this.broadcastLobby(room);
+    this.sendChatHistory(room, conn);
   }
 
   private start(conn: Conn): void {
@@ -289,6 +305,33 @@ export class RoomManager {
     this.removePlayer(room, target);
   }
 
+  /** Skicka ett chattmeddelande till alla i rummet. */
+  private chat(conn: Conn, text: string): void {
+    const at = this.where.get(conn);
+    if (!at) return;
+    const { room, player } = at;
+    const clean = cleanText(text, CHAT_MAX_LENGTH);
+    if (!clean) return;
+    if (!player.chatLimit.take()) {
+      this.error(conn, "rate_limited", "Du skriver för fort. Vänta lite.");
+      return;
+    }
+    const msg: ChatMessage = {
+      id: room.nextChatId++,
+      from: player.id,
+      name: player.name,
+      color: player.color,
+      text: clean,
+    };
+    room.chat.push(msg);
+    if (room.chat.length > CHAT_HISTORY) room.chat.shift();
+    this.broadcast(room, { t: "chat", messages: [msg] });
+  }
+
+  private sendChatHistory(room: Room, conn: Conn): void {
+    if (room.chat.length) conn.send({ t: "chat", messages: room.chat, history: true });
+  }
+
   /** Publika rum som går att gå med i just nu (inte låsta, inte fulla). */
   private publicRooms(): PublicRoom[] {
     const list: PublicRoom[] = [];
@@ -339,6 +382,7 @@ export class RoomManager {
       color: free.find((c) => c === wanted) ?? free[0] ?? game.PLAYER_COLORS[0],
       secret: randomBytes(16).toString("hex"),
       conn,
+      chatLimit: new RateLimiter(LIMITS.chatPerSecond, LIMITS.chatBurst),
     };
     room.players.set(player.id, player);
     this.where.set(conn, { room, player });
@@ -400,10 +444,16 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 function cleanName(name: unknown, n: number): string {
-  const s = String(name ?? "")
-    .replace(/[\p{Cc}\p{Cf}]/gu, "") // kontrolltecken och osynliga tecken (t.ex. riktningsbyten som vänder text)
+  return cleanText(name, 16) || `Spelare ${n}`;
+}
+
+/** Text som visas för andra: en rad, utan kontrolltecken, högst max tecken. */
+function cleanText(text: unknown, max: number): string {
+  const s = String(text ?? "")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 16);
-  return s || `Spelare ${n}`;
+    // Kontrolltecken och osynliga tecken (t.ex. riktningsbyten som vänder text), men inte
+    // sammanfogaren U+200D som bygger ihop emojier som 👨‍👩‍👧.
+    .replace(/(?!\u200d)[\p{Cc}\p{Cf}]/gu, "")
+    .trim();
+  return [...s].slice(0, max).join("").trim();
 }

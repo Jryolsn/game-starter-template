@@ -37,6 +37,9 @@ const ResumeSchema = v.object({
   secret: v.pipe(v.string(), v.maxLength(64)),
 });
 
+/** Max antal tecken i ett chattmeddelande. */
+export const CHAT_MAX_LENGTH = 200;
+
 const NameSchema = v.pipe(v.string(), v.maxLength(64));
 const PasswordSchema = v.pipe(v.string(), v.maxLength(64));
 const InviteSchema = v.pipe(v.string(), v.maxLength(64));
@@ -71,6 +74,8 @@ export const ClientMsgSchema = v.variant("t", [
   v.object({ t: v.literal("profile"), name: v.optional(NameSchema), color: v.optional(ColorSchema) }),
   v.object({ t: v.literal("start") }),
   v.object({ t: v.literal("input"), input: PlayerInputSchema }),
+  // Chattmeddelande till alla i rummet, i lobbyn och under spelet.
+  v.object({ t: v.literal("chat"), text: v.pipe(v.string(), v.maxLength(CHAT_MAX_LENGTH)) }),
   v.object({ t: v.literal("leave") }),
 ]);
 
@@ -92,7 +97,19 @@ export type ServerMsg =
   | { t: "lobby"; players: LobbyPlayer[]; hostId: string; phase: RoomPhase; settings: RoomSettings }
   | { t: "rooms"; rooms: PublicRoom[] }
   | { t: "state"; state: GameState }
+  // Nya chattmeddelanden. history: de senaste i rummet, skickas när man går med eller återansluter.
+  | { t: "chat"; messages: ChatMessage[]; history?: true }
   | { t: "error"; code: ErrorCode; message: string };
+
+export interface ChatMessage {
+  /** Ökar för varje meddelande i rummet, så att klienten kan hoppa över sådana den redan har. */
+  id: number;
+  from: string;
+  /** Namn och färg när meddelandet skickades. */
+  name: string;
+  color: string;
+  text: string;
+}
 
 /** Hemlighet som låter en spelare återansluta till sin plats (t.ex. efter att mobilen låst skärmen). */
 export type Resume = v.InferOutput<typeof ResumeSchema>;
@@ -122,4 +139,4 @@ export const WS_PATH = "/ws";
  * Höj när meddelandeformatet ändras på ett sätt som inte är bakåtkompatibelt.
  * Klienter med annan version blir ombedda att ladda om sidan efter en driftsättning.
  */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;

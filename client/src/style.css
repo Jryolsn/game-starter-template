@@ -308,6 +308,106 @@ input.code {
   min-height: 56px;
 }
 
+/* Chatt */
+.hud-actions {
+  display: flex;
+  gap: 8px;
+}
+.chat-button {
+  position: relative;
+}
+.chat-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1a0b10;
+  font-size: 0.8rem;
+  line-height: 22px;
+}
+.chat-panel {
+  align-items: flex-end;
+}
+.chat-panel .screen {
+  max-height: 100dvh;
+}
+.chat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 120px;
+  max-height: 40dvh;
+  overflow-y: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.chat-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+.chat-line .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.chat-line.mine .chat-text {
+  color: var(--muted);
+}
+.chat-empty {
+  color: var(--muted);
+}
+.chat-phrases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chat-phrases button {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 1rem;
+}
+.chat-bubbles {
+  position: fixed;
+  z-index: 4;
+  top: calc(max(10px, env(safe-area-inset-top)) + 52px);
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none; /* stör inte styrningen */
+}
+.chat-bubble {
+  max-width: 100%;
+  padding: 8px 14px;
+  border-radius: 18px;
+  background: #2b2742f5;
+  box-shadow: 0 4px 16px #0006;
+  list-style: none;
+  animation: chat-fade 4s forwards;
+}
+@keyframes chat-fade {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Testa mikrofonen */
 .mic-test {
   display: grid;

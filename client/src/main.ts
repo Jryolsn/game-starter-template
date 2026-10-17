@@ -5,6 +5,7 @@ import * as gameUi from "../../game/ui.ts";
 import { GameView } from "../../game/view.ts";
 import type { LobbyPlayer, PublicRoom, RoomPhase, RoomSettings, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, inviteFromUrl, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
+import { Chat } from "./chat.ts";
 import { keepAwake, micLevel, releaseAwake, startMic, stopMic, unlockAudio } from "./device.ts";
 import { reportErrors } from "./errors.ts";
 import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
@@ -34,6 +35,11 @@ let roomSettings: RoomSettings = { visibility: "private", hasPassword: false, lo
 let pendingJoin: { code: string; name: string } | null = null;
 /** Visas listan "Hitta rum" just nu? Då ritas den om när svaret kommer. */
 let browsing = false;
+const chat = new Chat(
+  app,
+  (text) => conn?.send({ t: "chat", text }),
+  () => me,
+);
 
 // ---- Skärmar ----
 function showHome(error = "") {
@@ -212,6 +218,7 @@ function showLobby() {
           return li;
         }),
       ),
+      chat.button("Chatt"),
       h("div", { className: "spacer" }),
       isHost
         ? button("Starta spelet", "primary", () => conn?.send({ t: "start" }))
@@ -269,7 +276,13 @@ function showGame() {
   view = new GameView(me, (input) => conn?.send({ t: "input", input }));
   hud = h("div", { className: "hud-items" });
   render(
-    h("div", { className: "game" }, [view.canvas, h("div", { className: "hud" }, [hud, button("Lämna", "", leave)])]),
+    h("div", { className: "game" }, [
+      view.canvas,
+      h("div", { className: "hud" }, [
+        hud,
+        h("div", { className: "hud-actions" }, [...(solo ? [] : [chat.button("")]), button("Lämna", "", leave)]),
+      ]),
+    ]),
   );
   if (lastState) onState(lastState);
 }
@@ -295,6 +308,7 @@ function showResults() {
       isHost
         ? button("Spela igen", "primary", () => conn?.send({ t: "start" }))
         : h("p", { textContent: "Väntar på att värden startar en ny runda…", style: "text-align:center" }),
+      ...(solo ? [] : [chat.button("Chatt")]),
       button(solo ? "Till startsidan" : "Lämna rummet", "ghost", leave),
     ]),
   ]);
@@ -426,6 +440,7 @@ function toggle(label: string, checked: boolean) {
 
 function leave() {
   conn?.send({ t: "leave" });
+  chat.reset();
   if (solo) conn?.close();
   phase = null;
   showHome();
@@ -505,6 +520,7 @@ function onMessage(msg: ServerMsg) {
   if ((msg.t !== "error" && solo !== conn instanceof SoloConnection) || !conn) return;
   switch (msg.t) {
     case "joined":
+      if (msg.code !== code) chat.reset(); // nytt rum; vid återanslutning behålls chatten
       code = msg.code;
       me = msg.you;
       invite = msg.invite;
@@ -533,6 +549,9 @@ function onMessage(msg: ServerMsg) {
       break;
     case "rooms":
       if (browsing) showRoomList(msg.rooms);
+      break;
+    case "chat":
+      chat.receive(msg.messages, msg.history);
       break;
     case "error":
       if (msg.code === "outdated") return reloadForNewVersion();

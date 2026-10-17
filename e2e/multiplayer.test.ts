@@ -276,3 +276,34 @@ test("snabba tumrörelser kopplar inte bort spelaren", async () => {
   await page.waitForTimeout(500);
   assert.equal(closed, 0, "servern kopplade bort spelaren");
 });
+
+test("chatt i lobbyn och under spelet", async () => {
+  const host = await phone();
+  await host.goto(URL_);
+  await host.fill('input[placeholder="Ditt namn"]', "Värd");
+  await button(host, "Skapa rum").click();
+  const code = (await host.locator(".room-code").textContent())!;
+  const guest = await phone();
+  await guest.goto(`${URL_}/r/${code}`);
+  await guest.fill('input[placeholder="Ditt namn"]', "Gäst");
+  await button(guest, "Gå med i rummet").click();
+  await host.locator(".players li").nth(1).waitFor();
+
+  // Gästen skriver; värden ser en bubbla och en olästräknare, och HTML visas som text.
+  await button(guest, "Chatt").click();
+  await guest.fill('input[placeholder="Skriv något…"]', "Hej <b>alla</b>");
+  await guest.keyboard.press("Enter");
+  await host.locator(".chat-bubble", { hasText: "Gäst: Hej <b>alla</b>" }).waitFor();
+  assert.equal(await host.locator(".chat-button .chat-badge").textContent(), "1");
+  await button(host, "Chatt").click();
+  assert.deepEqual(await host.locator(".chat-list .chat-text").allTextContents(), ["Gäst: Hej <b>alla</b>"]);
+  await button(host, "Stäng").click();
+  await button(guest, "Stäng").click();
+
+  // Under spelet: en snabbfras från HUD:en.
+  await button(host, "Starta spelet").click();
+  await guest.locator(".hud .chat-button").click();
+  await button(guest, "Snyggt!").click();
+  await host.locator(".chat-bubble", { hasText: "Gäst: Snyggt!" }).waitFor();
+  assert.equal(await guest.locator(".chat-panel").count(), 0);
+});
