@@ -6,7 +6,17 @@ import { GameView } from "../../game/view.ts";
 import type { LobbyPlayer, PublicRoom, RoomPhase, RoomSettings, ServerMsg } from "../../shared/protocol.ts";
 import { CODE_LENGTH, inviteFromUrl, normalizeRoomCode, roomCodeFromUrl, roomLink } from "../../shared/roomCode.ts";
 import { Chat } from "./chat.ts";
-import { keepAwake, micLevel, releaseAwake, startMic, stopMic, unlockAudio } from "./device.ts";
+import {
+  type CameraFacing,
+  keepAwake,
+  micLevel,
+  releaseAwake,
+  startCamera,
+  startMic,
+  stopCamera,
+  stopMic,
+  unlockAudio,
+} from "./device.ts";
 import { reportErrors } from "./errors.ts";
 import { type Connection, loadResume, OnlineConnection, SoloConnection } from "./net.ts";
 import { loadProfile, loadSettings, saveProfile, saveSettings } from "./profile.ts";
@@ -369,9 +379,11 @@ function showSettings(inRoom: boolean) {
   const sound = toggle("Ljud", settings.sound);
   const vibration = toggle("Vibration", settings.vibration);
   const mic = micTest();
+  const cam = cameraTest();
 
   const close = () => {
     mic.stop();
+    cam.stop();
     overlay.remove();
   };
   const save = () => {
@@ -390,6 +402,7 @@ function showSettings(inRoom: boolean) {
       sound.row,
       vibration.row,
       mic.row,
+      cam.row,
       button("Spara", "primary", save),
       button("Avbryt", "ghost", close),
     ]),
@@ -430,6 +443,40 @@ function micTest() {
     draw();
   });
   return { row: h("div", { className: "mic-test" }, [test, meter, info]), stop };
+}
+
+/** "Testa kameran": ger tillåtelse i förväg och visar bilden, för spel som använder kameran. */
+function cameraTest() {
+  const box = h("div", { className: "camera-preview", hidden: true });
+  const info = h("p", { hidden: true });
+  let facing: CameraFacing = "user";
+  const show = async () => {
+    info.hidden = false;
+    if (!window.isSecureContext) {
+      info.textContent = "Kameran fungerar bara när sidan öppnas via https, t.ex. med pnpm tunnel.";
+      return;
+    }
+    info.textContent = "Startar…";
+    const video = await startCamera(facing);
+    if (!video) {
+      info.textContent = "Kameran gick inte att starta. Tillåt kameran för sidan i webbläsarens inställningar.";
+      return;
+    }
+    if (!box.isConnected) return stopCamera(); // panelen stängdes medan kameran startade
+    video.classList.toggle("mirror", facing === "user"); // framkameran visas som en spegel
+    box.replaceChildren(video);
+    test.hidden = true;
+    box.hidden = false;
+    flip.hidden = false;
+    info.textContent = "Så här ser spelet kamerabilden.";
+  };
+  const test = button("📷 Testa kameran", "", show);
+  const flip = button("Byt kamera", "", () => {
+    facing = facing === "user" ? "environment" : "user";
+    show();
+  });
+  flip.hidden = true;
+  return { row: h("div", { className: "mic-test" }, [test, box, flip, info]), stop: stopCamera };
 }
 
 function toggle(label: string, checked: boolean) {
@@ -601,6 +648,7 @@ function onState(state: GameState) {
 function teardownGame() {
   releaseAwake();
   stopMic();
+  stopCamera();
   view?.destroy();
   view = null;
   hud = null;

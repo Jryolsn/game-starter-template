@@ -137,3 +137,50 @@ export function stopMic(): void {
   mic?.analyser.disconnect();
   mic = null;
 }
+
+// ---- Kamera ----
+// Bilden stannar i telefonen. Spelet ritar den eller analyserar den (t.ex. med MediaPipe)
+// och skickar bara resultatet som input, till exempel "handen är uppe".
+export type CameraFacing = "user" | "environment";
+let camera: { stream: MediaStream; video: HTMLVideoElement; facing: CameraFacing } | null = null;
+let cameraStarting: Promise<HTMLVideoElement | null> | null = null;
+
+/**
+ * Starta kameran: "user" är framkameran (selfie), "environment" den bakre. Anropa från en tryckning;
+ * webbläsaren frågar om lov första gången. Ger en <video> med kamerabilden, som spelet kan visa,
+ * rita på sin canvas med drawImage eller analysera. Ger null om spelaren nekar, sidan inte är
+ * https eller kamera saknas.
+ */
+export function startCamera(facing: CameraFacing = "user"): Promise<HTMLVideoElement | null> {
+  const live = camera?.stream.getVideoTracks()[0]?.readyState === "live";
+  if (camera && live && camera.facing === facing) return Promise.resolve(camera.video);
+  cameraStarting ??= openCamera(facing).finally(() => (cameraStarting = null));
+  return cameraStarting;
+}
+
+async function openCamera(facing: CameraFacing): Promise<HTMLVideoElement | null> {
+  stopCamera();
+  if (!navigator.mediaDevices?.getUserMedia) return null;
+  try {
+    // Låg upplösning räcker för styrning och sparar batteri.
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } },
+    });
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true; // annars öppnar iOS videon i helskärm
+    video.srcObject = stream;
+    await video.play().catch(() => {});
+    camera = { stream, video, facing };
+    return video;
+  } catch {
+    return null; // nekad, ingen kamera, eller sidan är inte https
+  }
+}
+
+/** Stäng av kameran, så att telefonens kameraindikator släcks. */
+export function stopCamera(): void {
+  for (const t of camera?.stream.getTracks() ?? []) t.stop();
+  if (camera) camera.video.srcObject = null;
+  camera = null;
+}

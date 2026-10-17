@@ -25,6 +25,19 @@ Börjar lobbyn, inställningar och resultatskärmar växa (formulär, listor, fl
 
 Spel som styrs av hur högt det låter har redan stöd i mallen: `startMic()` och `micLevel()` i `client/src/device.ts`, se [nytt-spel.md](nytt-spel.md#mikrofon-ljudnivå-som-styrning). Behöver spelet mer än nivån, t.ex. tonhöjd för ett sångspel, läs frekvenserna från samma `AnalyserNode` med `getFloatFrequencyData`, eller använd [Pitchy](https://github.com/ianprime0509/pitchy).
 
+## Kamera och video
+
+`startCamera()` i `client/src/device.ts` ger kamerabilden, se [nytt-spel.md](nytt-spel.md#kamera). För att förstå vad som syns i bilden:
+
+| Behov | Välj | Passar in |
+| --- | --- | --- |
+| Händer, gester, ansikte, kroppshållning | [MediaPipe Tasks Vision](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/web_js) (`@mediapipe/tasks-vision`) | Kör igenkänningen på `<video>` i `game/view.ts` varje bildruta och skicka resultatet (t.ex. "handen uppe") som input. Modellfilen laddas ner första gången, några MB. |
+| Rörelse i bilden (vifta, hoppa) | Egen kod | Rita bilden liten på en canvas, jämför med förra bildrutan och räkna hur många pixlar som ändrats. Inget bibliotek behövs. |
+| Läsa QR-koder | [`BarcodeDetector`](https://developer.mozilla.org/docs/Web/API/BarcodeDetector) (Android) eller [jsQR](https://github.com/cozmo/jsQR) | Skanna från `<video>`. |
+| Skicka en bild till de andra (t.ex. en profilbild) | Skala ner på klienten och skicka som ett nytt meddelande | Begränsa storleken i schemat i `shared/protocol.ts`; stora bilder hör hemma i lagring (t.ex. Supabase Storage), inte i WebSocketen. |
+
+**Videochatt**, där spelarna ser varandra, fungerar som röstchatten nedan fast tyngre. Använd samma tjänst (LiveKit) och slå på video. Tänk på batteri och data: låg upplösning och bara när det behövs.
+
 ## Röstchatt
 
 Mallen har ingen röstchatt, eftersom det är mycket drift för något många spel klarar sig utan (kompisar sitter ofta bredvid varandra eller använder Discord).

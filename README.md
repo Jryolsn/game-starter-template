@@ -110,6 +110,8 @@ I lobbyn, under spelet och på resultatskärmen finns en chatt (💬). Man kan s
 
 **Mikrofon:** spel som styrs av ljud (blåsa, skrika, klappa) kan läsa hur högt det låter med `startMic()` och `micLevel()` (0–1). Bara nivån används; själva ljudet lämnar aldrig telefonen. Under Profil och inställningar finns **Testa mikrofonen** med en mätare. Kräver https, se [docs/nytt-spel.md](docs/nytt-spel.md#mikrofon-ljudnivå-som-styrning).
 
+**Kamera:** `startCamera("user" | "environment")` ger en `<video>` med fram- eller bakkamerans bild, som spelet kan visa, rita på sin canvas eller analysera (t.ex. handrörelser med MediaPipe). Bilden lämnar inte telefonen. Under Profil och inställningar finns **Testa kameran**. Kräver https, se [docs/nytt-spel.md](docs/nytt-spel.md#kamera).
+
 ## Saker som medvetet är enkla
 
 - Rummen ligger i minnet, så en omstart av servern tömmer dem. Med flera serverinstanser behövs delat state (t.ex. Redis) eller "sticky" routing per rumskod.

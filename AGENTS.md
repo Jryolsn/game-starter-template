@@ -10,7 +10,7 @@ Startpunkt för webbspel: spela solo eller med andra i samma rum via 4-teckensko
 
 - `server/validate.ts` och `server/limits.ts`: validering mot `ClientMsgSchema` och gränser mot missbruk.
 - `server/log.ts`: loggning (JSON i produktion). Använd `log.info/warn/error("händelse", { fält })`, inte `console.log`. `client/src/errors.ts` skickar webbläsarens fel till servern.
-- `client/src/device.ts`: wake lock, vibration, ljud (iOS-upplåsning) och mikrofonens ljudnivå (`startMic`/`micLevel`). Respekterar spelarens inställningar.
+- `client/src/device.ts`: wake lock, vibration, ljud (iOS-upplåsning) mikrofonens ljudnivå (`startMic`/`micLevel`) och kameran (`startCamera`). Respekterar spelarens inställningar.
 - `client/src/chat.ts`: textchatt i rummet (panel, snabbfraser, pratbubblor). Servern rensar och begränsar meddelandena i `RoomManager.chat()`.
 - `client/src/profile.ts`: spelarens namn, färg och inställningar (ljud, vibration) i localStorage.
 
