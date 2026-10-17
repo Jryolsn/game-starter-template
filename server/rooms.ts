@@ -10,6 +10,7 @@ import {
   type PublicRoom,
   type RoomPhase,
   type ServerMsg,
+  stateFor,
   TICK_HZ,
   type Visibility,
 } from "../shared/protocol.ts";
@@ -198,7 +199,7 @@ export class RoomManager {
       this.sendJoined(room, old);
       this.broadcastLobby(room);
       this.sendChatHistory(room, conn);
-      if (room.state) conn.send({ t: "state", state: room.state });
+      if (room.state) conn.send({ t: "state", state: stateFor(room.state, old.id) });
       return;
     }
 
@@ -256,7 +257,7 @@ export class RoomManager {
         this.broadcastLobby(room);
         return;
       }
-      this.broadcast(room, { t: "state", state });
+      for (const p of room.players.values()) p.conn?.send({ t: "state", state: stateFor(state, p.id) });
       if (state.over) {
         clearInterval(room.loop);
         room.phase = "finished";

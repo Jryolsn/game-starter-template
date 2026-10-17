@@ -10,7 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test shared/*.test.ts server/*.test.ts",
+    "test": "tsx --test shared/*.test.ts server/*.test.ts game/*.test.ts",
     "build:solo": "tsx scripts/build-solo.ts",
     "tunnel": "pnpm build && tsx scripts/tunnel.ts",
     "tunnel:dev": "tsx scripts/tunnel.ts --dev",

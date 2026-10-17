@@ -8,6 +8,7 @@ import {
   PROTOCOL_VERSION,
   type Resume,
   type ServerMsg,
+  stateFor,
   TICK_HZ,
   WS_PATH,
 } from "../../shared/protocol.ts";
@@ -197,7 +198,7 @@ export class SoloConnection implements Connection {
   private step(): void {
     const state = this.state!;
     game.tick(state, 1 / TICK_HZ);
-    this.emit({ t: "state", state: structuredClone(state) });
+    this.emit({ t: "state", state: structuredClone(stateFor(state, this.me)) });
     if (state.over) {
       clearInterval(this.loop);
       this.emit(this.lobby("finished"));

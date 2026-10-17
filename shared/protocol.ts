@@ -1,6 +1,7 @@
 // Meddelanden mellan klient och server. Allt är JSON över en WebSocket.
 // Klientens meddelanden beskrivs som Valibot-scheman: de ger både TypeScript-typerna och valideringen på servern.
 import * as v from "valibot";
+import * as game from "../game/logic.ts";
 import { type GameState, PLAYER_COLORS, PlayerInputSchema } from "../game/logic.ts";
 
 export interface LobbyPlayer {
@@ -109,6 +110,15 @@ export interface ChatMessage {
   name: string;
   color: string;
   text: string;
+}
+
+/**
+ * Det en spelare får se av tillståndet. Exporterar spelet `viewFor(state, playerId)` används den,
+ * så att spelet kan dölja sådant spelaren inte ska veta (gömda spelare, andras kort). Annars ser alla allt.
+ */
+export function stateFor(state: GameState, playerId: string): GameState {
+  const viewFor = (game as { viewFor?: (state: GameState, playerId: string) => GameState }).viewFor;
+  return viewFor ? viewFor(state, playerId) : state;
 }
 
 /** Hemlighet som låter en spelare återansluta till sin plats (t.ex. efter att mobilen låst skärmen). */

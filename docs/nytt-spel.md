@@ -25,6 +25,9 @@ Funktionerna som resten av startern anropar:
 | `applyInput(state, id, input)` | En spelare skickar styrning. Formen är redan kontrollerad mot `PlayerInputSchema`; kontrollera spelregler här (t.ex. att det är din tur). |
 | `tick(state, dt)` | 20 gånger/s. Sätt `state.over = true` när rundan är slut. |
 | `ranking(state)` | Resultatskärmen |
+| `viewFor(state, id)` (valfri) | Innan tillståndet skickas till en spelare. Returnera en kopia utan det spelaren inte får veta (gömda spelare, andras kort). Utan den ser alla allt. |
+
+Tester för spellogiken kan läggas i `game/*.test.ts`; `pnpm test` kör dem.
 
 `GameState` måste ha `players: Record<id, { name, color, score }>`, `timeLeft` och `over`, eftersom HUD och resultatskärm läser dem. Allt annat är ditt.
 
