@@ -109,7 +109,7 @@ async function openMic(): Promise<boolean> {
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
     const analyser = audio.createAnalyser();
-    analyser.fftSize = 1024;
+    analyser.fftSize = 512; // ca 10 ms ljud per avläsning, så att nivån följer med snabbt
     audio.createMediaStreamSource(stream).connect(analyser); // inte till högtalaren
     mic = { stream, analyser, data: new Float32Array(analyser.fftSize) };
     return true;

@@ -323,5 +323,4 @@ input.code {
   height: 100%;
   width: 0;
   background: var(--accent-2);
-  transition: width 0.08s linear;
 }
