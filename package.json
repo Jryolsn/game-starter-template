@@ -13,6 +13,7 @@
     "test": "tsx --test shared/*.test.ts server/*.test.ts",
     "build:solo": "tsx scripts/build-solo.ts",
     "tunnel": "pnpm build && tsx scripts/tunnel.ts",
+    "tunnel:dev": "tsx scripts/tunnel.ts --dev",
     "test:e2e": "pnpm build && tsx --test e2e/*.test.ts",
     "lint": "biome check .",
     "format": "biome check --write .",
