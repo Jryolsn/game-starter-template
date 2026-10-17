@@ -5,11 +5,14 @@ import {
   CHAT_MAX_LENGTH,
   type ChatMessage,
   type ClientMsg,
+  defaultGameSettings,
   type ErrorCode,
+  type GameSettings,
   MAX_PLAYERS,
   type PublicRoom,
   type RoomPhase,
   type ServerMsg,
+  startGame,
   stateFor,
   TICK_HZ,
   type Visibility,
@@ -46,6 +49,8 @@ interface Room {
   /** Lösenordet i klartext, bara i minnet. null = inget lösenord. */
   password: string | null;
   locked: boolean;
+  /** Spelets inställningar som värden valt. */
+  game: GameSettings;
   /** Hemlig nyckel i länken och QR-koden. Den som har den slipper lösenordet. */
   invite: string;
   /** De senaste chattmeddelandena, för den som går med eller återansluter. */
@@ -160,6 +165,7 @@ export class RoomManager {
       visibility: "private",
       password: null,
       locked: false,
+      game: defaultGameSettings(),
       invite: randomBytes(12).toString("base64url"),
       chat: [],
       nextChatId: 1,
@@ -240,7 +246,7 @@ export class RoomManager {
       return;
     }
     if (room.phase === "playing") return;
-    room.state = game.createGame([...room.players.values()]);
+    room.state = startGame([...room.players.values()], undefined, room.game);
     room.phase = "playing";
     this.broadcastLobby(room);
     const dt = 1 / TICK_HZ;
@@ -273,7 +279,7 @@ export class RoomManager {
     this.removePlayer(at.room, at.player);
   }
 
-  /** Värden ändrar synlighet, lösenord och lås. */
+  /** Värden ändrar synlighet, lösenord, lås och spelets inställningar. */
   private settings(conn: Conn, msg: Extract<ClientMsg, { t: "settings" }>): void {
     const at = this.where.get(conn);
     if (!at) return;
@@ -285,6 +291,7 @@ export class RoomManager {
     if (msg.visibility) room.visibility = msg.visibility;
     if (msg.password !== undefined) room.password = msg.password?.trim() || null;
     if (msg.locked !== undefined) room.locked = msg.locked;
+    for (const [key, value] of Object.entries(msg.game ?? {})) if (value !== undefined) room.game[key] = value;
     this.broadcastLobby(room);
   }
 
@@ -424,7 +431,12 @@ export class RoomManager {
       t: "lobby",
       hostId: room.hostId,
       phase: room.phase,
-      settings: { visibility: room.visibility, hasPassword: room.password !== null, locked: room.locked },
+      settings: {
+        visibility: room.visibility,
+        hasPassword: room.password !== null,
+        locked: room.locked,
+        game: room.game,
+      },
       players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color, connected: !!p.conn })),
     });
   }

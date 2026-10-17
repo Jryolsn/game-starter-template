@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { afterEach, test } from "node:test";
-import type { ServerMsg } from "../shared/protocol.ts";
+import { GAME_SETTINGS, type ServerMsg } from "../shared/protocol.ts";
 import { type Conn, RoomManager } from "./rooms.ts";
 
 function client() {
@@ -304,4 +304,21 @@ test("chatt utan rum ignoreras", () => {
   const a = client();
   rooms.handle(a.conn, { t: "chat", text: "hallå?" });
   assert.equal(a.inbox.length, 0);
+});
+
+test("värden väljer spelets inställningar, och de följer med i lobbyn", (t) => {
+  const setting = GAME_SETTINGS[0];
+  if (!setting) return t.skip("spelet har inga inställningar");
+  rooms = new RoomManager();
+  const host = client();
+  const guest = client();
+  cleanup.push(host.conn, guest.conn);
+  rooms.handle(host.conn, { t: "create", name: "A" });
+  rooms.handle(guest.conn, { t: "join", code: host.last("joined").code, name: "B" });
+  assert.equal(guest.last("lobby").settings.game[setting.key], setting.default);
+  const value = setting.options.find((n) => n !== setting.default)!;
+  rooms.handle(guest.conn, { t: "settings", game: { [setting.key]: value } });
+  assert.equal(guest.last("error").code, "not_host");
+  rooms.handle(host.conn, { t: "settings", game: { [setting.key]: value } });
+  assert.equal(guest.last("lobby").settings.game[setting.key], value);
 });

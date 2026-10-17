@@ -5,9 +5,11 @@
 import * as game from "../../game/logic.ts";
 import {
   type ClientMsg,
+  defaultGameSettings,
   PROTOCOL_VERSION,
   type Resume,
   type ServerMsg,
+  startGame,
   stateFor,
   TICK_HZ,
   WS_PATH,
@@ -172,7 +174,7 @@ export class SoloConnection implements Connection {
         break;
       case "start":
         clearInterval(this.loop);
-        this.state = game.createGame([{ id: this.me, name: this.name, color: this.color }]);
+        this.state = startGame([{ id: this.me, name: this.name, color: this.color }], undefined, defaultGameSettings());
         this.emit(this.lobby("playing"));
         this.loop = window.setInterval(() => this.step(), 1000 / TICK_HZ);
         break;
@@ -210,7 +212,7 @@ export class SoloConnection implements Connection {
       t: "lobby",
       hostId: this.me,
       phase,
-      settings: { visibility: "private", hasPassword: false, locked: false },
+      settings: { visibility: "private", hasPassword: false, locked: false, game: defaultGameSettings() },
       players: [{ id: this.me, name: this.name, color: this.color, connected: true }],
     };
   }
