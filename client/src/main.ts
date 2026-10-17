@@ -251,7 +251,7 @@ function showLobby() {
 function gameSettings(isHost: boolean): HTMLElement[] {
   return GAME_SETTINGS.map((s) => {
     const current = roomSettings.game[s.key] ?? s.default;
-    const label = (n: number) => `${n}${s.unit ? ` ${s.unit}` : ""}`;
+    const label = (n: number) => `${n}${s.unit ? `\u00a0${s.unit}` : ""}`;
     if (!isHost) return h("p", { textContent: `${s.label}: ${label(current)}` });
     return h("div", { className: "setting" }, [
       h("p", { textContent: s.label }),
