@@ -63,6 +63,8 @@ För spel där ljudet styr (blås för att flyga, skrik för att ladda, klappa i
 2. **Starta mikrofonen från en tryckning** i `game/view.ts`, t.ex. i `pointerdown` eller från en knapp "Slå på mikrofonen": `startMic()` ger `true` när den är igång. Webbläsaren frågar spelaren om lov första gången, och iOS kräver att det sker från en tryckning. Ger den `false` (nekad, ingen mikrofon) bör spelet gå att spela ändå, eller säga vad som saknas.
 3. **Läs nivån varje bildruta** med `micLevel()` i `draw()`, avrunda (t.ex. till tiondelar) och skicka den med `sendInput` bara när den ändrats. Servern släpper igenom 30 meddelanden per sekund och spelare (`LIMIT_MSG_PER_SECOND`), så skicka inte varje bildruta.
 
+Under **Profil och inställningar** finns knappen **Testa mikrofonen**. Den ber om tillåtelse och visar en mätare med samma nivå som `micLevel()` ger, så att spelaren kan kontrollera mikrofonen innan rundan och du kan se vilka nivåer ditt spel får.
+
 Mikrofonen stängs av automatiskt när rundan är slut (`stopMic()` i `teardownGame()`), så telefonens inspelningsindikator släcks.
 
 **Mikrofonen kräver https.** Webbläsaren ger bara sidor på `https://` eller `localhost` tillgång till mikrofonen. Med `pnpm dev` fungerar det på datorn (`localhost`) men inte från mobilen via wifi-adressen (`http://192.168…`). Testa på mobilen med `pnpm tunnel`, som ger en https-adress, eller på den driftsatta servern.
